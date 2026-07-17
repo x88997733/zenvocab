@@ -1,4 +1,4 @@
-const MODEL=process.env.GEMINI_MODEL||'gemini-2.5-flash';
+const MODEL=process.env.GEMINI_MODEL||'gemini-3.1-flash-lite';
 const ENTRY={type:'OBJECT',properties:{word:{type:'STRING'},phonetic:{type:'STRING'},partOfSpeech:{type:'STRING'},translation:{type:'STRING'},definition:{type:'STRING'},example:{type:'STRING'},exampleTranslation:{type:'STRING'},level:{type:'STRING'},tags:{type:'ARRAY',items:{type:'STRING'}}},required:['word','phonetic','partOfSpeech','translation','definition','example','exampleTranslation','level','tags']};
 export default async function handler(req,res){if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'}); if(!process.env.GEMINI_API_KEY)return res.status(500).json({error:'伺服器尚未設定 GEMINI_API_KEY'}); try{const {action,word,image}=req.body||{}; let payload;
 if(action==='lookup'){if(!word)return res.status(400).json({error:'缺少查詢文字'}); payload={contents:[{parts:[{text:`請分析英文單字或片語：${word}`}]}],systemInstruction:{parts:[{text:'你是專業英漢辭典編輯。輸出繁體中文解釋、自然例句、CEFR程度(A1-C2)及1至3個標籤。只能輸出符合 schema 的 JSON。'}]},generationConfig:{responseMimeType:'application/json',responseSchema:ENTRY}};}
