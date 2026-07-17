@@ -1,0 +1,13 @@
+ZenVocab 5.0 已完成。
+
+最簡單的使用方法：
+1. 將整個資料夾上傳 GitHub。
+2. 在 Vercel 選 Add New → Project → 匯入 GitHub 專案。
+3. 在 Settings → Environment Variables 新增：
+   GEMINI_API_KEY = 你的 Gemini API Key
+   GEMINI_MODEL = gemini-2.5-flash
+4. Redeploy。
+5. 用手機打開 Vercel 網址。
+6. iPhone Safari：分享 → 加入主畫面，即可像 App 一樣使用。
+
+請不要把 API Key 直接貼入 src 裡面的任何檔案。

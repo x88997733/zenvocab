@@ -1,0 +1,1 @@
+import {CheckCircle2,AlertCircle,Info} from 'lucide-react'; export default function Toast({items}){return <div className="toast-stack">{items.map(t=><div className={`toast ${t.type}`} key={t.id}>{t.type==='error'?<AlertCircle/>:t.type==='info'?<Info/>:<CheckCircle2/>}<span>{t.message}</span></div>)}</div>}
