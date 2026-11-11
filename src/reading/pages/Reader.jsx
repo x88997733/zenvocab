@@ -22,6 +22,8 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   const [gs, setGs] = useState(loadGlobalSettings);
   const [index, setIndex] = useState(book.index || 0);
   const [pageIdx, setPageIdx] = useState(0);
+  const pageIdxRef = useRef(0);
+  pageIdxRef.current = pageIdx;
   // 上方標題列與下方播放列預設隱藏，點畫面中間才叫出來
   const [chrome, setChrome] = useState(false);
   // 睡眠定時：到時間自動停止朗讀（時間戳，毫秒）
@@ -195,6 +197,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       return;
     }
     const first = pg[next][0];
+    pageIdxRef.current = next;
     setPageIdx(next);
     if (first) {
       anchorRef.current = { para: first.para, start: first.start };
@@ -273,8 +276,15 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     setIndex(i);
     saveProgress(i);
     if (L.s.pageMode === 'paged' && L.pages) {
-      setPageIdx(pageForParagraph(L.pages, i));
-      anchorRef.current = { para: i, start: 0 };
+      // 目前這一頁已經有這段文字時就不換頁（避免朗讀時被拉回前一頁）
+      const cur = L.pages[pageIdxRef.current];
+      if (!cur || !cur.some((c) => c.para === i)) {
+        const target = pageForParagraph(L.pages, i);
+        pageIdxRef.current = target;
+        setPageIdx(target);
+      }
+      const first = L.pages[pageIdxRef.current]?.[0];
+      if (first) anchorRef.current = { para: first.para, start: first.start };
     }
     else document.getElementById(`p-${i}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
@@ -536,12 +546,58 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
 
   // ---------- 翻頁手勢 ----------
   function onPageClick(e) {
+    if (suppressIfPressed()) return;
     if (!window.getSelection()?.isCollapsed) return;
     const rect = pageAreaRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     if (x < 0.3) turnPage(-1);
     else if (x > 0.7) turnPage(1);
     else setChrome((c) => !c);
+  }
+
+  // 長按段落：從這一段開始朗讀（移動手指就取消）
+  const pressRef = useRef({ timer: null, fired: false, x: 0, y: 0 });
+  function pressStart(e) {
+    const el = e.target.closest?.('[data-para]');
+    if (!el) return;
+    const para = Number(el.dataset.para);
+    const t = e.touches[0];
+    const p = pressRef.current;
+    clearTimeout(p.timer);
+    p.fired = false;
+    p.x = t.clientX;
+    p.y = t.clientY;
+    p.timer = setTimeout(() => {
+      p.timer = null;
+      p.fired = true;
+      window.getSelection()?.removeAllRanges();
+      setSelection(null);
+      goTo(para);
+      play();
+    }, 600);
+  }
+  function pressMove(e) {
+    const p = pressRef.current;
+    if (!p.timer) return;
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - p.x) > 10 || Math.abs(t.clientY - p.y) > 10) {
+      clearTimeout(p.timer);
+      p.timer = null;
+    }
+  }
+  function pressEnd() {
+    const p = pressRef.current;
+    if (p.timer) {
+      clearTimeout(p.timer);
+      p.timer = null;
+    }
+  }
+  function suppressIfPressed() {
+    if (pressRef.current.fired) {
+      pressRef.current.fired = false;
+      return true;
+    }
+    return false;
   }
 
   function onTouchStart(e) {
@@ -633,6 +689,13 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       {paragraphs && !paged && (
         <div
           className="reader-body"
+          onTouchStart={pressStart}
+          onTouchMove={pressMove}
+          onTouchEnd={pressEnd}
+          onTouchCancel={pressEnd}
+          onContextMenu={(e) => {
+            if (pressRef.current.fired) e.preventDefault();
+          }}
           onClick={(e) => {
             if (e.target === e.currentTarget && window.getSelection()?.isCollapsed) setChrome((c) => !c);
           }}
@@ -645,6 +708,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
               className={`${i === index ? 'para current' : 'para'}${isHeading(i) ? ' heading' : ''}`}
               style={{ textIndent: s.indent && !isHeading(i) ? '2em' : 0 }}
               onClick={() => {
+                if (suppressIfPressed()) return;
                 if (!window.getSelection()?.isCollapsed) return;
                 goTo(i);
                 if (playingRef.current) play();
@@ -662,8 +726,19 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
           className="page-area"
           ref={pageAreaRef}
           onClick={onPageClick}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
+          onTouchStart={(e) => {
+            onTouchStart(e);
+            pressStart(e);
+          }}
+          onTouchMove={pressMove}
+          onTouchEnd={(e) => {
+            onTouchEnd(e);
+            pressEnd();
+          }}
+          onTouchCancel={pressEnd}
+          onContextMenu={(e) => {
+            if (pressRef.current.fired) e.preventDefault();
+          }}
         >
           <div
             ref={measureRef}
