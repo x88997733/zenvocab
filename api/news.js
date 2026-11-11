@@ -1,7 +1,14 @@
 // 新聞標題來源（RSS）。伺服器端抓取，避免瀏覽器跨網域限制；每 30 分鐘快取一次。
+const GN = (topic) => `https://news.google.com/rss/headlines/section/topic/${topic}?hl=zh-TW&gl=TW&ceid=TW:zh-Hant`;
 const FEEDS = {
-  tw: 'https://news.google.com/rss?hl=zh-TW&gl=TW&ceid=TW:zh-Hant',
-  world: 'https://feeds.bbci.co.uk/news/world/rss.xml',
+  top: 'https://news.google.com/rss?hl=zh-TW&gl=TW&ceid=TW:zh-Hant',
+  nation: GN('NATION'),
+  world: GN('WORLD'),
+  business: GN('BUSINESS'),
+  technology: GN('TECHNOLOGY'),
+  entertainment: GN('ENTERTAINMENT'),
+  sports: GN('SPORTS'),
+  english: 'https://feeds.bbci.co.uk/news/world/rss.xml',
 };
 const cache = {};
 
@@ -22,7 +29,7 @@ const tagOf = (block, name) => {
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  const feed = FEEDS[req.query.feed] ? req.query.feed : 'tw';
+  const feed = FEEDS[req.query.feed] ? req.query.feed : 'top';
   const hit = cache[feed];
   if (hit && Date.now() - hit.at < 30 * 60 * 1000) return res.status(200).json({ items: hit.items });
   try {
