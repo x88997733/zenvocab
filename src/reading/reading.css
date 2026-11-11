@@ -54,3 +54,15 @@
 .rd-root .rd-seg button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .rd-root .cover.has-img { padding: 0; }
 .rd-root .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rd-root .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.rd-root .header-actions button { padding: 8px 10px; font-size: 14px; }
+.rd-root button.danger { background: #a8432f; color: #fff; border-color: #a8432f; }
+.rd-root .book-card { position: relative; }
+.rd-root .book-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.rd-root .book-card.is-selected .cover { opacity: 0.85; }
+.rd-root .check {
+  position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9); border: 2px solid #fff; color: var(--accent);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
+}
+.rd-root .check.on { background: var(--accent); color: #fff; }
