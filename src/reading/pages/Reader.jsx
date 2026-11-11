@@ -47,7 +47,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   const offsetsRef = useRef([0]);
   const touchXRef = useRef(null);
   // 分頁模式下目前頁首的位置（段落 + 段內起始字元），重新分頁時用來還原位置
-  const anchorRef = useRef({ para: 0, start: 0 });
+  const anchorRef = useRef({ para: index, start: 0 });
   const paragraphsRef = useRef(null);
   paragraphsRef.current = paragraphs;
 
