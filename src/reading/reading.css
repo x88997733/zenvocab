@@ -145,5 +145,8 @@
 /* 閱讀器必須蓋在 App 的標題列（z-index 20）和底部導覽列（z-index 30）之上 */
 .rd-root .reader { z-index: 50; }
 /* 隱藏標題列與播放列時：讓文字避開 iPhone 狀態列與底部安全區，選取工具列貼近底部 */
-.rd-root .reader.no-chrome { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 .rd-root .reader.no-chrome .rd-selbar { bottom: calc(24px + env(safe-area-inset-bottom)); }
+/* 標題列與播放列以浮層顯示在文字上方，不佔版面，叫出或收起時不會重新分頁 */
+.rd-root .reader-header { position: absolute; top: 0; left: 0; right: 0; z-index: 5; }
+.rd-root .player { position: absolute; bottom: 0; left: 0; right: 0; z-index: 5; }
+.rd-root .reader .page-area { z-index: 1; }

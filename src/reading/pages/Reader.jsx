@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { loadBooks, saveBooks, loadText, addReadingSeconds, loadChapters, loadAnno, saveAnno } from '../lib/store.js';
 import { offsetsOf, percentAt, statusOf } from '../lib/progress.js';
 import { splitSentences, pickDefaultVoice } from '../lib/speech.js';
 import { loadGlobalSettings, saveGlobalSettings, effectiveSettings, THEMES, FONTS } from '../lib/settings.js';
-import { paginate, pageForParagraph, pageForPos } from '../lib/pagination.js';
+import { pageForParagraph, pageForPos } from '../lib/pagination.js';
+import { paginateMeasured, escapeHtml } from '../lib/measure.js';
 import { buildSegments } from '../lib/marks.js';
 import { detectChapters, currentChapter } from '../lib/chapters.js';
 import { lookupWord, explainText } from '../../services/api.js';
@@ -49,18 +50,30 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   const paragraphsRef = useRef(null);
   paragraphsRef.current = paragraphs;
 
-  const pages = useMemo(() => {
-    if (!paragraphs || !paged) return null;
-    const w = size.w || 340;
-    const h = size.h || 600;
-    return paginate(paragraphs, {
-      fontSize: s.fontSize,
-      lineHeight: s.lineHeight,
-      width: Math.max(80, w - s.margin * 2),
-      height: Math.max(120, h - 48),
-      indent: s.indent,
-    });
-  }, [paragraphs, paged, size.w, size.h, s.fontSize, s.lineHeight, s.margin, s.indent]);
+  // 分頁結果：用畫面上的隱藏區實際量測排版高度來切頁（不再用字數估算）
+  const [pages, setPages] = useState(null);
+  const measureRef = useRef(null);
+  useEffect(() => {
+    const area = pageAreaRef.current;
+    const measurer = measureRef.current;
+    if (!paragraphs || !paged || !area || !measurer) {
+      setPages(null);
+      return;
+    }
+    const cap = area.clientHeight;
+    const fits = (items) => {
+      measurer.innerHTML = items
+        .map((c) => {
+          const text = paragraphs[c.para].slice(c.start, c.end);
+          const indent = s.indent && c.start === 0 ? '2em' : '0';
+          return `<p class="para" style="text-indent:${indent}">${text ? escapeHtml(text) : '&nbsp;'}</p>`;
+        })
+        .join('');
+      return measurer.offsetHeight <= cap;
+    };
+    setPages(paginateMeasured(paragraphs, fits));
+    measurer.innerHTML = '';
+  }, [paragraphs, paged, size.w, size.h, s.fontSize, s.lineHeight, s.margin, s.indent, s.font]);
 
   // 給朗讀流程用的最新值（避免閉包拿到舊資料）
   const latest = useRef({});
@@ -541,6 +554,12 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
+          <div
+            ref={measureRef}
+            className="page-text"
+            aria-hidden="true"
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'auto', overflow: 'visible', visibility: 'hidden', padding: `16px ${s.margin}px` }}
+          />
           {pages && pages[pageIdx] && (
             <div className="page-text" style={{ padding: `16px ${s.margin}px` }}>
               {pages[pageIdx].map((c, k) => (
