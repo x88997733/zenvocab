@@ -1,4 +1,4 @@
-import { get, set } from 'idb-keyval';
+import { get, set, del } from 'idb-keyval';
 
 // 書櫃清單（不含全文）
 export const loadBooks = () => get('books').then((v) => v ?? []);
@@ -30,4 +30,14 @@ export function addReadingSeconds(bookId, seconds) {
     await set('stats', stats);
   });
   return queue;
+}
+
+// 封面圖（Blob）
+export const saveCover = (id, blob) => set(`cover:${id}`, blob);
+export const loadCover = (id) => get(`cover:${id}`);
+
+// 刪除書時清掉全文與封面
+export async function deleteBookData(id) {
+  await del(`text:${id}`);
+  await del(`cover:${id}`);
 }

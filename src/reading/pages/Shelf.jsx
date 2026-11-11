@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { parseBook } from '../lib/parse.js';
 import { toTraditional } from '../lib/convert.js';
-import { loadBooks, saveBooks, saveText, loadStats } from '../lib/store.js';
+import { loadBooks, saveBooks, saveText, loadStats, saveCover, loadCover, deleteBookData } from '../lib/store.js';
 import { statusOf, formatDuration } from '../lib/progress.js';
 
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
@@ -11,6 +11,30 @@ export default function Shelf({ books, onOpen, onChanged }) {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [totals, setTotals] = useState({});
+  const [covers, setCovers] = useState({});
+
+  // 載入封面（Blob → object URL），換書或卸載時釋放
+  useEffect(() => {
+    let cancelled = false;
+    const urls = [];
+    (async () => {
+      const next = {};
+      for (const b of books) {
+        if (!b.hasCover) continue;
+        const blob = await loadCover(b.id);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          urls.push(url);
+          next[b.id] = url;
+        }
+      }
+      if (!cancelled) setCovers(next);
+    })();
+    return () => {
+      cancelled = true;
+      urls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [books]);
 
   useEffect(() => {
     loadStats().then((stats) => {
@@ -43,9 +67,11 @@ export default function Shelf({ books, onOpen, onChanged }) {
           chars: paragraphs.reduce((n, p) => n + p.length, 0),
           paragraphCount: paragraphs.length,
           addedAt: Date.now(),
+          hasCover: !!parsed.cover,
           lastRead: null,
         };
         await saveText(id, paragraphs);
+        if (parsed.cover) await saveCover(id, parsed.cover);
         current.push(meta);
         await saveBooks(current);
       } catch (err) {
@@ -60,6 +86,7 @@ export default function Shelf({ books, onOpen, onChanged }) {
     if (!confirm(`確定要刪除《${book.title}》嗎？`)) return;
     const current = (await loadBooks()).filter((b) => b.id !== book.id);
     await saveBooks(current);
+    await deleteBookData(book.id);
     onChanged();
   }
 
@@ -92,8 +119,12 @@ export default function Shelf({ books, onOpen, onChanged }) {
           const status = statusOf(book.percent);
           return (
             <article key={book.id} className="book-card">
-              <button className="cover" style={{ background: `hsl(${hue(book.title)} 45% 42%)` }} onClick={() => onOpen(book.id)}>
-                <span>{book.title.slice(0, 6)}</span>
+              <button
+                className={covers[book.id] ? 'cover has-img' : 'cover'}
+                style={covers[book.id] ? undefined : { background: `hsl(${hue(book.title)} 45% 42%)` }}
+                onClick={() => onOpen(book.id)}
+              >
+                {covers[book.id] ? <img src={covers[book.id]} alt="" /> : <span>{book.title.slice(0, 6)}</span>}
               </button>
               <div className="book-info">
                 <h2 title={book.title}>{book.title}</h2>
