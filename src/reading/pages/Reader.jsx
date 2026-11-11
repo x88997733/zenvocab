@@ -566,7 +566,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
                 <p
                   key={k}
                   data-para={c.para}
-                  className={c.para === index ? 'para current' : 'para'}
+                  className="para"
                   style={{ textIndent: s.indent && c.start === 0 ? '2em' : 0 }}
                 >
                   {renderSegs(paragraphs[c.para].slice(c.start, c.end), c.para)}
