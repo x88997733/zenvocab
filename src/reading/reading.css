@@ -160,3 +160,5 @@
 .rd-root .ai-text { white-space: pre-wrap; }
 /* 選取工具列在窄螢幕換行，避免超出畫面 */
 .rd-root .rd-selbar { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 24px); }
+/* 標題段落：序、目錄、第X章等，自成一段並加粗 */
+.rd-root .reader .para.heading { font-weight: 700; font-size: calc(var(--rd-size) * 1.12); margin: 1.6em 0 0.7em; }

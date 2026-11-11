@@ -21,3 +21,10 @@ export function currentChapter(toc, index) {
   }
   return found;
 }
+
+// 看起來像標題的短段落（序、目錄、版權資訊、第X章…），顯示時要自成一段並加粗
+const HEADING_RE = /^(序|序言|目錄|目录|前言|後記|版權資訊|版权信息|扉頁|扉页|封面|作者簡介|作者简介|謝辭|致謝|索引)\s*$|^第[一二三四五六七八九十百千萬零〇兩\d]+[章節回卷部篇集]/;
+export function isHeadingText(text) {
+  const t = text.trim();
+  return t.length > 0 && t.length <= 30 && (HEADING_RE.test(t) || CHAPTER_RE.test(t) || SPECIAL_RE.test(t));
+}

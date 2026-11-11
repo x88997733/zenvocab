@@ -7,7 +7,7 @@ import { loadGlobalSettings, saveGlobalSettings, effectiveSettings, THEMES, FONT
 import { pageForParagraph, pageForPos } from '../lib/pagination.js';
 import { paginateMeasured, escapeHtml } from '../lib/measure.js';
 import { buildSegments } from '../lib/marks.js';
-import { detectChapters, currentChapter } from '../lib/chapters.js';
+import { detectChapters, currentChapter, isHeadingText } from '../lib/chapters.js';
 import { lookupWord, explainText, summarizeChapter, chapterQuestions } from '../../services/api.js';
 import { makeQuoteCard } from '../lib/card.js';
 import { TocPanel, SettingsPanel, WordSheet } from '../components/Panels.jsx';
@@ -51,6 +51,9 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   const paragraphsRef = useRef(null);
   paragraphsRef.current = paragraphs;
 
+  // 標題段落（序、目錄、第X章…）：自成一段、加粗，不縮排
+  const isHeading = (i) => !!paragraphs && isHeadingText(paragraphs[i] || '');
+
   // 分頁結果：用畫面上的隱藏區實際量測排版高度來切頁（不再用字數估算）
   const [pages, setPages] = useState(null);
   const measureRef = useRef(null);
@@ -66,8 +69,9 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       measurer.innerHTML = items
         .map((c) => {
           const text = paragraphs[c.para].slice(c.start, c.end);
-          const indent = s.indent && c.start === 0 ? '2em' : '0';
-          return `<p class="para" style="text-indent:${indent}">${text ? escapeHtml(text) : '&nbsp;'}</p>`;
+          const heading = c.start === 0 && isHeadingText(paragraphs[c.para]);
+          const indent = s.indent && c.start === 0 && !heading ? '2em' : '0';
+          return `<p class="para${heading ? ' heading' : ''}" style="text-indent:${indent}">${text ? escapeHtml(text) : '&nbsp;'}</p>`;
         })
         .join('');
       return measurer.offsetHeight <= cap;
@@ -589,8 +593,8 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
               key={i}
               id={`p-${i}`}
               data-para={i}
-              className={i === index ? 'para current' : 'para'}
-              style={{ textIndent: s.indent ? '2em' : 0 }}
+              className={`${i === index ? 'para current' : 'para'}${isHeading(i) ? ' heading' : ''}`}
+              style={{ textIndent: s.indent && !isHeading(i) ? '2em' : 0 }}
               onClick={() => {
                 if (!window.getSelection()?.isCollapsed) return;
                 goTo(i);
@@ -624,8 +628,8 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
                 <p
                   key={k}
                   data-para={c.para}
-                  className="para"
-                  style={{ textIndent: s.indent && c.start === 0 ? '2em' : 0 }}
+                  className={`para${c.start === 0 && isHeading(c.para) ? ' heading' : ''}`}
+                  style={{ textIndent: s.indent && c.start === 0 && !isHeading(c.para) ? '2em' : 0 }}
                 >
                   {renderSegs(paragraphs[c.para].slice(c.start, c.end), c.para)}
                 </p>
