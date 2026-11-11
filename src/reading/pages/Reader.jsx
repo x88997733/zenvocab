@@ -587,13 +587,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       </footer>
 
       {selection && (
-        <div
-          className="rd-selbar"
-          style={{
-            top: selection.rect.top > 96 ? selection.rect.top - 58 : selection.rect.bottom + 10,
-            left: selection.rect.left + selection.rect.width / 2,
-          }}
-        >
+        <div className="rd-selbar">
           {Object.entries(COLORS).map(([k, c]) => (
             <button key={k} className="dot" style={{ background: c }} onClick={() => addHighlight(k)} aria-label="劃線" />
           ))}
