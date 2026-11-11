@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { loadBooks, saveBooks, loadText, addReadingSeconds, loadChapters, loadAnno, saveAnno } from '../lib/store.js';
 import { offsetsOf, percentAt, statusOf } from '../lib/progress.js';
 import { splitSentences, pickDefaultVoice } from '../lib/speech.js';
@@ -451,7 +452,9 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     '--rd-sheet-ink': s.theme === 'dark' ? '#e6e6e6' : '#2b2a27',
   };
 
-  return (
+  // 用 portal 掛到 body，避免被 App 的版面（sticky 標題列、底部導覽列、transform）擋住或改變定位
+  return createPortal(
+    <div className="rd-root">
     <section className="reader" ref={rootRef} style={cssVars} onClick={(e) => e.target === e.currentTarget && setSelection(null)}>
       <header className="reader-header">
         <button className="ghost" onClick={handleBack}>
@@ -644,5 +647,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
 
       {s.brightness > 0 && <div className="rd-dim" style={{ opacity: s.brightness / 100 }} />}
     </section>
+    </div>,
+    document.body
   );
 }
