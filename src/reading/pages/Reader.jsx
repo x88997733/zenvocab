@@ -264,7 +264,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     setActiveSent(null);
   }
 
-  function speakFrom(i, run) {
+  function speakFrom(i, run, fromSent = 0) {
     if (run !== runIdRef.current) return;
     const paras = paragraphsRef.current;
     if (!paras || i >= paras.length) {
@@ -289,7 +289,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     else document.getElementById(`p-${i}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
     const voice = L.voices.find((v) => v.voiceURI === L.s.voiceURI) || pickDefaultVoice(L.voices);
-    const sentences = splitSentences(paras[i]);
+    const sentences = splitSentences(paras[i]).slice(fromSent);
     const next = () => {
       if (run === runIdRef.current && indexRef.current === i) speakFrom(i + 1, run);
     };
@@ -314,7 +314,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     });
   }
 
-  function play() {
+  function play(fromSent = 0) {
     if (!paragraphsRef.current) return;
     if (!('speechSynthesis' in window)) {
       setSpeechError('這個瀏覽器不支援朗讀功能。');
@@ -327,7 +327,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     utterancesRef.current = [];
     playingRef.current = true;
     setPlaying(true);
-    speakFrom(indexRef.current, run);
+    speakFrom(indexRef.current, run, fromSent);
   }
 
   function togglePlay() {
@@ -566,13 +566,55 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     p.arm = null;
     rootRef.current?.classList.remove('pressing');
   }
+  // 找出手指位置所在的句子（段落編號 + 句子序號）
+  function sentenceAtPoint(el, x, y) {
+    const para = Number(el.dataset.para);
+    const base = Number(el.dataset.start || 0);
+    let node = null;
+    let off = 0;
+    if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y);
+      if (pos) {
+        node = pos.offsetNode;
+        off = pos.offset;
+      }
+    } else if (document.caretRangeFromPoint) {
+      const r = document.caretRangeFromPoint(x, y);
+      if (r) {
+        node = r.startContainer;
+        off = r.startOffset;
+      }
+    }
+    if (!node || !el.contains(node)) return { para, sent: 0 };
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let sum = 0;
+    let cur;
+    while ((cur = walker.nextNode())) {
+      if (cur === node) {
+        sum += off;
+        break;
+      }
+      sum += cur.textContent.length;
+    }
+    const charPos = base + sum;
+    const sents = splitSentences(paragraphsRef.current?.[para] || '');
+    let acc = 0;
+    let sent = 0;
+    for (let k = 0; k < sents.length; k++) {
+      if (acc <= charPos) sent = k;
+      acc += sents[k].length;
+    }
+    return { para, sent };
+  }
+
   function pressStart(e) {
     const el = e.target.closest?.('[data-para]');
     if (!el) return;
-    const para = Number(el.dataset.para);
     const t = e.touches[0];
+    const target = sentenceAtPoint(el, t.clientX, t.clientY);
     clearPress();
     const p = pressRef.current;
+    p.target = target;
     p.fired = false;
     p.x = t.clientX;
     p.y = t.clientY;
@@ -585,8 +627,9 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       p.fired = true;
       window.getSelection()?.removeAllRanges();
       setSelection(null);
-      goTo(para);
-      play();
+      // 保持目前頁面（句子若在這一頁就不換頁）
+      goTo(target.para, { keepPage: true });
+      play(target.sent);
     }, 600);
   }
   function pressMove(e) {
@@ -758,6 +801,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
                 <p
                   key={k}
                   data-para={c.para}
+                  data-start={c.start}
                   className={`para${c.start === 0 && isHeading(c.para) ? ' heading' : ''}`}
                   style={{ textIndent: s.indent && c.start === 0 && !isHeading(c.para) ? '2em' : 0 }}
                 >
