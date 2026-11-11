@@ -62,3 +62,16 @@ export function pageForParagraph(pages, para) {
   }
   return found;
 }
+
+// 依「段落 + 段內起始字元」找出所在頁。
+// 長段落跨頁時，只用段落編號會讓位置落回段落開頭那一頁，造成重新分頁時跳回前一頁。
+export function pageForPos(pages, { para, start = 0 }) {
+  let found = 0;
+  for (let i = 0; i < pages.length; i++) {
+    const c = pages[i][0];
+    if (!c) continue;
+    if (c.para < para || (c.para === para && c.start <= start)) found = i;
+    else break;
+  }
+  return found;
+}

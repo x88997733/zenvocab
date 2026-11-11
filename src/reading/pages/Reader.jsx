@@ -4,7 +4,7 @@ import { loadBooks, saveBooks, loadText, addReadingSeconds, loadChapters, loadAn
 import { offsetsOf, percentAt, statusOf } from '../lib/progress.js';
 import { splitSentences, pickDefaultVoice } from '../lib/speech.js';
 import { loadGlobalSettings, saveGlobalSettings, effectiveSettings, THEMES, FONTS } from '../lib/settings.js';
-import { paginate, pageForParagraph } from '../lib/pagination.js';
+import { paginate, pageForParagraph, pageForPos } from '../lib/pagination.js';
 import { buildSegments } from '../lib/marks.js';
 import { detectChapters, currentChapter } from '../lib/chapters.js';
 import { lookupWord, explainText } from '../../services/api.js';
@@ -42,6 +42,8 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   const utterancesRef = useRef([]);
   const offsetsRef = useRef([0]);
   const touchXRef = useRef(null);
+  // 分頁模式下目前頁首的位置（段落 + 段內起始字元），重新分頁時用來還原位置
+  const anchorRef = useRef({ para: 0, start: 0 });
   const paragraphsRef = useRef(null);
   paragraphsRef.current = paragraphs;
 
@@ -88,7 +90,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
 
   // 分頁模式：依目前段落決定所在頁；字體等變動後也保持在同一段
   useEffect(() => {
-    if (paged && pages) setPageIdx(pageForParagraph(pages, indexRef.current));
+    if (paged && pages) setPageIdx(pageForPos(pages, anchorRef.current));
   }, [paged, pages]);
 
   // 可視區域大小（分頁用）
@@ -153,7 +155,10 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     const clamped = Math.max(0, Math.min(paragraphsRef.current.length - 1, i));
     indexRef.current = clamped;
     setIndex(clamped);
-    if (paged && latest.current.pages && !keepPage) setPageIdx(pageForParagraph(latest.current.pages, clamped));
+    if (paged && latest.current.pages && !keepPage) {
+      setPageIdx(pageForParagraph(latest.current.pages, clamped));
+      anchorRef.current = { para: clamped, start: 0 };
+    }
     saveProgress(clamped);
     if (scroll && !paged) document.getElementById(`p-${clamped}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
@@ -169,6 +174,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     const first = pg[next][0];
     setPageIdx(next);
     if (first) {
+      anchorRef.current = { para: first.para, start: first.start };
       indexRef.current = first.para;
       setIndex(first.para);
       saveProgress(first.para);
@@ -197,7 +203,10 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     indexRef.current = i;
     setIndex(i);
     saveProgress(i);
-    if (L.s.pageMode === 'paged' && L.pages) setPageIdx(pageForParagraph(L.pages, i));
+    if (L.s.pageMode === 'paged' && L.pages) {
+      setPageIdx(pageForParagraph(L.pages, i));
+      anchorRef.current = { para: i, start: 0 };
+    }
     else document.getElementById(`p-${i}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
     const voice = L.voices.find((v) => v.voiceURI === L.s.voiceURI) || pickDefaultVoice(L.voices);
@@ -550,7 +559,10 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
             const v = Number(e.target.value);
             if (paged && pages) {
               setPageIdx(v);
-              if (pages[v]?.[0]) goTo(pages[v][0].para, { keepPage: true });
+              if (pages[v]?.[0]) {
+                anchorRef.current = { para: pages[v][0].para, start: pages[v][0].start };
+                goTo(pages[v][0].para, { keepPage: true });
+              }
             } else {
               goTo(v);
               if (playingRef.current) play();
