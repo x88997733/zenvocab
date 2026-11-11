@@ -20,6 +20,8 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   const [gs, setGs] = useState(loadGlobalSettings);
   const [index, setIndex] = useState(book.index || 0);
   const [pageIdx, setPageIdx] = useState(0);
+  // 上方標題列與下方播放列預設隱藏，點畫面中間才叫出來
+  const [chrome, setChrome] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [speechError, setSpeechError] = useState('');
   const [activeSent, setActiveSent] = useState(null);
@@ -418,6 +420,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     const x = (e.clientX - rect.left) / rect.width;
     if (x < 0.3) turnPage(-1);
     else if (x > 0.7) turnPage(1);
+    else setChrome((c) => !c);
   }
 
   function onTouchStart(e) {
@@ -450,6 +453,8 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     onBack();
   }
 
+  const showChrome = chrome || !!speechError;
+
   const cssVars = {
     '--rd-font': FONTS[s.font].stack,
     '--rd-size': `${s.fontSize}px`,
@@ -464,8 +469,8 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   // 用 portal 掛到 body，避免被 App 的版面（sticky 標題列、底部導覽列、transform）擋住或改變定位
   return createPortal(
     <div className="rd-root">
-    <section className="reader" ref={rootRef} style={cssVars} onClick={(e) => e.target === e.currentTarget && setSelection(null)}>
-      <header className="reader-header">
+    <section className={`reader${showChrome ? '' : ' no-chrome'}`} ref={rootRef} style={cssVars} onClick={(e) => e.target === e.currentTarget && setSelection(null)}>
+      {showChrome && <header className="reader-header">
         <button className="ghost" onClick={handleBack}>
           ← 書櫃
         </button>
@@ -493,7 +498,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
             Aa
           </button>
         </div>
-      </header>
+      </header>}
 
       <div className="progress-line">
         <div style={{ width: `${percent}%` }} />
@@ -502,7 +507,12 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       {!paragraphs && <p className="empty">載入中…</p>}
 
       {paragraphs && !paged && (
-        <div className="reader-body">
+        <div
+          className="reader-body"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && window.getSelection()?.isCollapsed) setChrome((c) => !c);
+          }}
+        >
           {paragraphs.map((p, i) => (
             <p
               key={i}
@@ -514,6 +524,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
                 if (!window.getSelection()?.isCollapsed) return;
                 goTo(i);
                 if (playingRef.current) play();
+                setChrome((c) => !c);
               }}
             >
               {renderSegs(p, i)}
@@ -548,7 +559,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
         </div>
       )}
 
-      <footer className="player">
+      {showChrome && <footer className="player">
         {speechError && <p className="notice error">{speechError}</p>}
         <input
           type="range"
@@ -596,7 +607,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
             下一{paged ? '頁' : '段'}
           </button>
         </div>
-      </footer>
+      </footer>}
 
       {selection && (
         <div className="rd-selbar">

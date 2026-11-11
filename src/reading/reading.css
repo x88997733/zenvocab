@@ -144,3 +144,6 @@
 .rd-root .rd-selbar { top: auto; bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); }
 /* 閱讀器必須蓋在 App 的標題列（z-index 20）和底部導覽列（z-index 30）之上 */
 .rd-root .reader { z-index: 50; }
+/* 隱藏標題列與播放列時：讓文字避開 iPhone 狀態列與底部安全區，選取工具列貼近底部 */
+.rd-root .reader.no-chrome { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+.rd-root .reader.no-chrome .rd-selbar { bottom: calc(24px + env(safe-area-inset-bottom)); }
