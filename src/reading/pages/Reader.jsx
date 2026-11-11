@@ -12,6 +12,7 @@ export default function Reader({ book, onBack, onProgress }) {
   const [rate, setRate] = useState(1);
   const [voices, setVoices] = useState([]);
   const [voiceURI, setVoiceURI] = useState('');
+  const [speechError, setSpeechError] = useState('');
 
   const indexRef = useRef(index);
   const playingRef = useRef(false);
@@ -105,20 +106,28 @@ export default function Reader({ book, onBack, onProgress }) {
       u.lang = voice?.lang || 'zh-TW';
       if (voice) u.voice = voice;
       u.rate = rateRef.current;
-      if (k === sentences.length - 1) {
-        u.onend = next;
-        u.onerror = (e) => {
-          if (e.error !== 'interrupted' && e.error !== 'canceled') next();
-        };
-      }
+      if (k === sentences.length - 1) u.onend = next;
+      // 出錯時立刻停止並顯示原因；舊的錯誤不能讓段落一直跳過去
+      u.onerror = (e) => {
+        if (e.error === 'interrupted' || e.error === 'canceled') return;
+        if (run !== runIdRef.current) return;
+        stopSpeaking();
+        setSpeechError(`朗讀失敗（${e.error || '未知原因'}）。請確認靜音開關與音量，或換一個語音再試。`);
+      };
       utterancesRef.current.push(u); // 保留參照，避免瀏覽器回收
       speechSynthesis.speak(u);
     });
   }
 
   function play() {
-    if (!paragraphs || !('speechSynthesis' in window)) return;
+    if (!paragraphs) return;
+    if (!('speechSynthesis' in window)) {
+      setSpeechError('這個瀏覽器不支援朗讀功能。');
+      return;
+    }
+    setSpeechError('');
     speechSynthesis.cancel();
+    if (speechSynthesis.paused) speechSynthesis.resume(); // 有些瀏覽器會卡在暫停狀態
     const run = ++runIdRef.current;
     utterancesRef.current = [];
     playingRef.current = true;
@@ -220,6 +229,7 @@ export default function Reader({ book, onBack, onProgress }) {
       </div>
 
       <footer className="player">
+        {speechError && <p className="notice error">{speechError}</p>}
         <input
           type="range"
           min="0"
