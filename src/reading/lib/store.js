@@ -1,0 +1,33 @@
+import { get, set } from 'idb-keyval';
+
+// 書櫃清單（不含全文）
+export const loadBooks = () => get('books').then((v) => v ?? []);
+export const saveBooks = (books) => set('books', books);
+
+// 每本書的全文段落（轉成繁體後存入）
+export const loadText = (id) => get(`text:${id}`).then((v) => v ?? []);
+export const saveText = (id, paragraphs) => set(`text:${id}`, paragraphs);
+
+// 閱讀時間：{ "2026-11-11": { bookId: seconds } }
+export const loadStats = () => get('stats').then((v) => v ?? {});
+
+export function todayKey(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// 寫入佇列：避免同時寫入時互相覆蓋
+let queue = Promise.resolve();
+export function addReadingSeconds(bookId, seconds) {
+  if (seconds <= 0) return Promise.resolve();
+  queue = queue.then(async () => {
+    const stats = await loadStats();
+    const day = todayKey();
+    stats[day] = stats[day] || {};
+    stats[day][bookId] = (stats[day][bookId] || 0) + seconds;
+    await set('stats', stats);
+  });
+  return queue;
+}
