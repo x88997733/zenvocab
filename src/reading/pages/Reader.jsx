@@ -555,18 +555,31 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     else setChrome((c) => !c);
   }
 
-  // 長按段落：從這一段開始朗讀（移動手指就取消）
-  const pressRef = useRef({ timer: null, fired: false, x: 0, y: 0 });
+  // 長按段落：從這一段開始朗讀（移動手指就取消）。
+  // 按住一小段時間後暫時關閉文字選取，避免 iOS 把長按當成選字。
+  const pressRef = useRef({ timer: null, arm: null, fired: false, x: 0, y: 0 });
+  function clearPress() {
+    const p = pressRef.current;
+    clearTimeout(p.timer);
+    clearTimeout(p.arm);
+    p.timer = null;
+    p.arm = null;
+    rootRef.current?.classList.remove('pressing');
+  }
   function pressStart(e) {
     const el = e.target.closest?.('[data-para]');
     if (!el) return;
     const para = Number(el.dataset.para);
     const t = e.touches[0];
+    clearPress();
     const p = pressRef.current;
-    clearTimeout(p.timer);
     p.fired = false;
     p.x = t.clientX;
     p.y = t.clientY;
+    p.arm = setTimeout(() => {
+      p.arm = null;
+      rootRef.current?.classList.add('pressing');
+    }, 200);
     p.timer = setTimeout(() => {
       p.timer = null;
       p.fired = true;
@@ -578,19 +591,12 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   }
   function pressMove(e) {
     const p = pressRef.current;
-    if (!p.timer) return;
+    if (!p.timer && !p.arm) return;
     const t = e.touches[0];
-    if (Math.abs(t.clientX - p.x) > 10 || Math.abs(t.clientY - p.y) > 10) {
-      clearTimeout(p.timer);
-      p.timer = null;
-    }
+    if (Math.abs(t.clientX - p.x) > 10 || Math.abs(t.clientY - p.y) > 10) clearPress();
   }
   function pressEnd() {
-    const p = pressRef.current;
-    if (p.timer) {
-      clearTimeout(p.timer);
-      p.timer = null;
-    }
+    clearPress();
   }
   function suppressIfPressed() {
     if (pressRef.current.fired) {
