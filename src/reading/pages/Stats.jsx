@@ -34,6 +34,26 @@ export default function Stats({ books }) {
 
   const ranking = Object.entries(perBook).sort((a, b) => b[1] - a[1]);
 
+  // 本月、今年
+  const nowKey = todayKey();
+  let month = 0;
+  let year = 0;
+  for (const [k, day] of Object.entries(stats)) {
+    const sec = Object.values(day).reduce((a, b) => a + b, 0);
+    if (k.startsWith(nowKey.slice(0, 7))) month += sec;
+    if (k.startsWith(nowKey.slice(0, 4))) year += sec;
+  }
+
+  // 熱力圖：最近 12 週（84 天）
+  const cells = [];
+  for (let i = 83; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = todayKey(d);
+    cells.push({ key, secs: Object.values(stats[key] || {}).reduce((a, b) => a + b, 0) });
+  }
+  const maxCell = Math.max(1, ...cells.map((c) => c.secs));
+
   return (
     <section className="page">
       <header className="page-header">
@@ -60,6 +80,29 @@ export default function Stats({ books }) {
             </div>
             <span className="meta">{d.label}</span>
           </div>
+        ))}
+      </div>
+
+      <div className="stat-tiles" style={{ marginTop: 12 }}>
+        <div className="tile">
+          <span className="meta">本月</span>
+          <strong>{formatDuration(month)}</strong>
+        </div>
+        <div className="tile">
+          <span className="meta">今年</span>
+          <strong>{formatDuration(year)}</strong>
+        </div>
+      </div>
+
+      <h2>閱讀熱力圖（最近 12 週）</h2>
+      <div className="heatmap">
+        {cells.map((c) => (
+          <div
+            key={c.key}
+            className="hm-cell"
+            title={`${c.key}：${formatDuration(c.secs)}`}
+            style={{ opacity: c.secs ? 0.25 + 0.75 * (c.secs / maxCell) : 0.08 }}
+          />
         ))}
       </div>
 

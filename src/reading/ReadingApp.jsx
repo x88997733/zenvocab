@@ -5,7 +5,7 @@ import Reader from './pages/Reader.jsx';
 import Stats from './pages/Stats.jsx';
 import './reading.css';
 
-export default function ReadingApp() {
+export default function ReadingApp({ addEntries, toast }) {
   const [tab, setTab] = useState('shelf');
   const [books, setBooks] = useState([]);
   const [openId, setOpenId] = useState(null);
@@ -25,6 +25,8 @@ export default function ReadingApp() {
       <div className="rd-root">
         <Reader
           book={openBook}
+          addEntries={addEntries}
+          toast={toast}
           onBack={() => {
             setOpenId(null);
             refresh();

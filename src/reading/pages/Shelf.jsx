@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { parseBook } from '../lib/parse.js';
 import { toTraditional } from '../lib/convert.js';
-import { loadBooks, saveBooks, saveText, loadStats, saveCover, loadCover, deleteBookData } from '../lib/store.js';
+import { loadBooks, saveBooks, saveText, loadStats, saveCover, loadCover, deleteBookData, saveChapters } from '../lib/store.js';
 import { statusOf, formatDuration } from '../lib/progress.js';
 
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
@@ -74,6 +74,7 @@ export default function Shelf({ books, onOpen, onChanged }) {
         };
         await saveText(id, paragraphs);
         if (parsed.cover) await saveCover(id, parsed.cover);
+        if (parsed.toc?.length) await saveChapters(id, parsed.toc);
         current.push(meta);
         await saveBooks(current);
       } catch (err) {

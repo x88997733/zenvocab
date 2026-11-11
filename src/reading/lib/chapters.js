@@ -1,0 +1,23 @@
+// TXT 沒有內建目錄，用常見的「第X章」「第X回」等標題規則自動找出章節
+const CHAPTER_RE = /^第[一二三四五六七八九十百千萬零〇兩\d]+[章節回卷部篇集]\s*\S*/;
+const SPECIAL_RE = /^(序|序章|楔子|引子|前言|後記|尾聲|番外|附錄)(\s|$|：|:)/;
+
+export function detectChapters(paragraphs) {
+  const toc = [];
+  paragraphs.forEach((p, i) => {
+    const t = p.trim();
+    if (t.length > 40) return; // 章節標題通常很短
+    if (CHAPTER_RE.test(t) || SPECIAL_RE.test(t)) toc.push({ title: t, index: i });
+  });
+  return toc;
+}
+
+// 目前所在的章節（最後一個開始位置不超過 index 的章節）
+export function currentChapter(toc, index) {
+  let found = null;
+  for (const c of toc) {
+    if (c.index <= index) found = c;
+    else break;
+  }
+  return found;
+}

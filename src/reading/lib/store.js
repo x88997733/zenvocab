@@ -40,4 +40,14 @@ export const loadCover = (id) => get(`cover:${id}`);
 export async function deleteBookData(id) {
   await del(`text:${id}`);
   await del(`cover:${id}`);
+  await del(`chapters:${id}`);
+  await del(`anno:${id}`);
 }
+
+// 目錄（章節）
+export const loadChapters = (id) => get(`chapters:${id}`).then((v) => v ?? null);
+export const saveChapters = (id, toc) => set(`chapters:${id}`, toc);
+
+// 書籤、劃線、閱讀設定（每本書）：{ bookmarks: [], highlights: [], settings: {} }
+export const loadAnno = (id) => get(`anno:${id}`).then((v) => v ?? { bookmarks: [], highlights: [], settings: null });
+export const saveAnno = (id, anno) => set(`anno:${id}`, anno);
