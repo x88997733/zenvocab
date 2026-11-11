@@ -7,7 +7,7 @@ import { loadGlobalSettings, saveGlobalSettings, effectiveSettings, THEMES, FONT
 import { pageForParagraph, pageForPos } from '../lib/pagination.js';
 import { paginateMeasured, escapeHtml } from '../lib/measure.js';
 import { buildSegments } from '../lib/marks.js';
-import { detectChapters, currentChapter, isHeadingText } from '../lib/chapters.js';
+import { detectChapters, currentChapter, isHeadingText, isChapterStart } from '../lib/chapters.js';
 import { lookupWord, explainText, summarizeChapter, chapterQuestions } from '../../services/api.js';
 import { makeQuoteCard } from '../lib/card.js';
 import { TocPanel, SettingsPanel, WordSheet } from '../components/Panels.jsx';
@@ -76,7 +76,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
         .join('');
       return measurer.offsetHeight <= cap;
     };
-    setPages(paginateMeasured(paragraphs, fits));
+    setPages(paginateMeasured(paragraphs, fits, (i) => isChapterStart(paragraphs[i])));
     measurer.innerHTML = '';
   }, [paragraphs, paged, size.w, size.h, s.fontSize, s.lineHeight, s.margin, s.indent, s.font]);
 

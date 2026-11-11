@@ -1,6 +1,6 @@
 // 依實際排版高度分頁：fits(items) 由畫面端量測「這些片段排進一頁」是否放得下。
 // items 是 [{ para, start, end }]，表示第 para 段的 [start, end) 字元。
-export function paginateMeasured(paragraphs, fits) {
+export function paginateMeasured(paragraphs, fits, startsPage = () => false) {
   const pages = [];
   let cur = [];
   const flush = () => {
@@ -10,6 +10,8 @@ export function paginateMeasured(paragraphs, fits) {
 
   paragraphs.forEach((text, para) => {
     const len = text.length;
+    // 章節標題一定從新的一頁開始
+    if (startsPage(para) && cur.length) flush();
     if (len === 0) {
       const item = { para, start: 0, end: 0 };
       if (!fits([...cur, item])) flush();

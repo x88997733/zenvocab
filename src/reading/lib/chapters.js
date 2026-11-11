@@ -28,3 +28,9 @@ export function isHeadingText(text) {
   const t = text.trim();
   return t.length > 0 && t.length <= 30 && (HEADING_RE.test(t) || CHAPTER_RE.test(t) || SPECIAL_RE.test(t));
 }
+
+// 「第X章／節／回」開頭的章節標題：分頁時要從新的一頁開始
+export function isChapterStart(text) {
+  const t = (text || '').trim();
+  return t.length > 0 && t.length <= 30 && CHAPTER_RE.test(t);
+}
