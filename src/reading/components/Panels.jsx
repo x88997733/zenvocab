@@ -142,7 +142,7 @@ function Slider({ label, value, min, max, step, onChange, format }) {
   );
 }
 
-export function SettingsPanel({ s, onlyBook, onToggleOnlyBook, onChange, voices, onClose }) {
+export function SettingsPanel({ s, onlyBook, onToggleOnlyBook, onChange, voices, onClose, sleepEnd, onSleep }) {
   const sortedVoices = [...voices].sort((a, b) => Number(/zh/i.test(b.lang)) - Number(/zh/i.test(a.lang)));
   return (
     <div className="rd-sheet" onClick={(e) => e.stopPropagation()}>
@@ -211,6 +211,20 @@ export function SettingsPanel({ s, onlyBook, onToggleOnlyBook, onChange, voices,
       </div>
 
       <Slider label="亮度（遮罩）" value={s.brightness} min={0} max={60} step={5} onChange={(v) => onChange('brightness', v)} />
+
+      <div className="set-row">
+        <span>睡眠定時</span>
+        <div className="chips">
+          {[15, 30, 60, 90].map((m) => (
+            <button key={m} className="chip" onClick={() => onSleep(m)}>
+              {m} 分
+            </button>
+          ))}
+          <button className={sleepEnd ? 'chip' : 'chip on'} onClick={() => onSleep(0)}>
+            {sleepEnd ? '取消定時' : '不定時'}
+          </button>
+        </div>
+      </div>
 
       <div className="set-row">
         <span>朗讀速度</span>

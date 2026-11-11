@@ -24,6 +24,9 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   const [pageIdx, setPageIdx] = useState(0);
   // 上方標題列與下方播放列預設隱藏，點畫面中間才叫出來
   const [chrome, setChrome] = useState(false);
+  // 睡眠定時：到時間自動停止朗讀（時間戳，毫秒）
+  const [sleepEnd, setSleepEnd] = useState(null);
+  const [, setTick] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speechError, setSpeechError] = useState('');
   const [activeSent, setActiveSent] = useState(null);
@@ -201,6 +204,52 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     }
     if (playingRef.current) play();
   }
+
+  // 睡眠定時：每秒檢查一次，到時間就停止朗讀
+  useEffect(() => {
+    if (!sleepEnd) return undefined;
+    const t = setInterval(() => {
+      if (Date.now() >= sleepEnd) {
+        setSleepEnd(null);
+        stopSpeaking();
+        toast?.('睡眠定時時間到，已停止朗讀', 'info');
+      } else {
+        setTick((x) => x + 1);
+      }
+    }, 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sleepEnd]);
+
+  function setSleep(minutes) {
+    setSleepEnd(minutes ? Date.now() + minutes * 60 * 1000 : null);
+    toast?.(minutes ? `${minutes} 分鐘後自動停止朗讀` : '已取消睡眠定時', 'info');
+  }
+
+  // 朗讀時保持螢幕開啟（支援的瀏覽器）；切回頁面時重新申請
+  const wakeRef = useRef(null);
+  useEffect(() => {
+    async function hold() {
+      if (!('wakeLock' in navigator)) return;
+      try {
+        wakeRef.current = await navigator.wakeLock.request('screen');
+      } catch {
+        // 裝置不允許或省電模式，就算了
+      }
+    }
+    function release() {
+      const lock = wakeRef.current;
+      wakeRef.current = null;
+      lock?.release().catch(() => {});
+    }
+    if (playing) hold();
+    else release();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && playingRef.current) hold();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [playing]);
 
   // ---------- 朗讀 ----------
   function stopSpeaking() {
@@ -641,6 +690,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       )}
 
       {showChrome && <footer className="player">
+        {sleepEnd && <p className="sleep-note">⏱ 約 {Math.max(1, Math.ceil((sleepEnd - Date.now()) / 60000))} 分鐘後自動停止</p>}
         {speechError && <p className="notice error">{speechError}</p>}
         <input
           type="range"
@@ -736,6 +786,8 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
           onChange={changeSetting}
           voices={voices}
           onClose={() => setPanel(null)}
+          sleepEnd={sleepEnd}
+          onSleep={setSleep}
         />
       )}
 
