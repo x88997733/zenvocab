@@ -8,7 +8,8 @@ import { pageForParagraph, pageForPos } from '../lib/pagination.js';
 import { paginateMeasured, escapeHtml } from '../lib/measure.js';
 import { buildSegments } from '../lib/marks.js';
 import { detectChapters, currentChapter } from '../lib/chapters.js';
-import { lookupWord, explainText } from '../../services/api.js';
+import { lookupWord, explainText, summarizeChapter, chapterQuestions } from '../../services/api.js';
+import { makeQuoteCard } from '../lib/card.js';
 import { TocPanel, SettingsPanel, WordSheet } from '../components/Panels.jsx';
 
 const IDLE_LIMIT_MS = 2 * 60 * 1000; // 超過 2 分鐘沒有操作，就不計入閱讀時間
@@ -375,6 +376,60 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     }
   }
 
+  // 把選取的文字做成金句卡片（可分享或下載）
+  async function makeCard() {
+    if (!selection) return;
+    const text = selection.text;
+    clearSelection();
+    try {
+      const blob = await makeQuoteCard(text, book.title);
+      const file = new File([blob], 'quote.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: book.title }).catch(() => {});
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'quote.png';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast?.('已產生卡片圖片');
+    } catch (e) {
+      toast?.(e.message || '產生卡片失敗', 'error');
+    }
+  }
+
+  // 本章內容（章節範圍；沒有目錄時從目前位置開始）
+  function chapterInfo() {
+    const ch = currentChapter(chapters, curPara);
+    const start = ch ? ch.index : curPara;
+    const nextCh = chapters.find((c) => c.index > start);
+    const end = nextCh ? nextCh.index : paragraphs?.length || 0;
+    const text = (paragraphs || []).slice(start, end).join('\n').slice(0, 12000);
+    return { title: ch ? ch.title : book.title, text };
+  }
+
+  function openChapter() {
+    setSheet({ mode: 'chapter', text: chapterInfo().title });
+  }
+
+  async function runChapterAI(kind) {
+    const { title, text } = chapterInfo();
+    setSheet({ mode: kind, text: title, loading: true });
+    try {
+      const fn = kind === 'summary' ? summarizeChapter : chapterQuestions;
+      const result = await fn(text);
+      setSheet({ mode: kind, text: title, loading: false, result });
+    } catch (e) {
+      setSheet({ mode: kind, text: title, loading: false, error: e.message || '產生失敗' });
+    }
+  }
+
+  function toggleNight() {
+    changeSetting('theme', s.theme === 'dark' ? 'cream' : 'dark');
+  }
+
   function addToVocab() {
     if (!sheet?.result) return;
     addEntries?.([sheet.result]);
@@ -495,6 +550,9 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
           </span>
         </div>
         <div className="reader-tools">
+          <button className="ghost" onClick={toggleNight} aria-label="夜間模式">
+            🌙
+          </button>
           <button className="ghost" onClick={toggleBookmark}>
             {isBookmarked ? '已加書籤' : '書籤'}
           </button>
@@ -625,6 +683,9 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
           >
             下一{paged ? '頁' : '段'}
           </button>
+          <button onClick={openChapter} disabled={!paragraphs}>
+            本章
+          </button>
         </div>
       </footer>}
 
@@ -635,6 +696,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
           ))}
           <button onClick={() => openLookup('word')}>查單字</button>
           <button onClick={() => openLookup('ai')}>AI 解釋</button>
+          <button onClick={makeCard}>做成卡片</button>
         </div>
       )}
 
@@ -677,6 +739,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
         <WordSheet
           sheet={sheet}
           onAdd={addToVocab}
+          onPick={runChapterAI}
           onClose={() => setSheet(null)}
         />
       )}

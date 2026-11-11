@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { loadStats, todayKey } from '../lib/store.js';
 import { formatDuration } from '../lib/progress.js';
+import { GOAL_OPTIONS, loadGoal, saveGoal, streakDays } from '../lib/goal.js';
 
 export default function Stats({ books }) {
   const [stats, setStats] = useState({});
+  const [goal, setGoal] = useState(loadGoal);
 
   useEffect(() => {
     loadStats().then(setStats);
@@ -33,6 +35,9 @@ export default function Stats({ books }) {
   const todaySecs = days[days.length - 1].secs;
 
   const ranking = Object.entries(perBook).sort((a, b) => b[1] - a[1]);
+  const goalSecs = goal * 60;
+  const goalPct = Math.min(100, Math.round((todaySecs / goalSecs) * 100));
+  const streak = streakDays(stats, todayKey);
 
   // 本月、今年
   const nowKey = todayKey();
@@ -59,6 +64,33 @@ export default function Stats({ books }) {
       <header className="page-header">
         <h1>閱讀統計</h1>
       </header>
+
+      <div className="goal-card">
+        <div className="goal-head">
+          <strong>今日目標</strong>
+          <select
+            value={goal}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setGoal(v);
+              saveGoal(v);
+            }}
+          >
+            {GOAL_OPTIONS.map((m) => (
+              <option key={m} value={m}>
+                {m} 分鐘
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="goal-bar">
+          <div style={{ width: `${goalPct}%` }} />
+        </div>
+        <p className="meta">
+          {todaySecs >= goalSecs ? '今天的目標達成了！' : `已讀 ${formatDuration(todaySecs)}，還差 ${formatDuration(goalSecs - todaySecs)}`}
+          {streak > 0 && ` · 連續閱讀 ${streak} 天`}
+        </p>
+      </div>
 
       <div className="stat-tiles">
         <div className="tile">

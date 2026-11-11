@@ -150,3 +150,13 @@
 .rd-root .reader-header { position: absolute; top: 0; left: 0; right: 0; z-index: 5; }
 .rd-root .player { position: absolute; bottom: 0; left: 0; right: 0; z-index: 5; }
 .rd-root .reader .page-area { z-index: 1; }
+/* 每日目標 */
+.rd-root .goal-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-top: 8px; }
+.rd-root .goal-head { display: flex; justify-content: space-between; align-items: center; }
+.rd-root .goal-head select { padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.rd-root .goal-bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0 6px; }
+.rd-root .goal-bar > div { height: 100%; background: var(--accent); transition: width 0.3s; }
+/* AI 文字保留換行 */
+.rd-root .ai-text { white-space: pre-wrap; }
+/* 選取工具列在窄螢幕換行，避免超出畫面 */
+.rd-root .rd-selbar { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 24px); }

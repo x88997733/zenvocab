@@ -242,12 +242,14 @@ export function SettingsPanel({ s, onlyBook, onToggleOnlyBook, onChange, voices,
   );
 }
 
-export function WordSheet({ sheet, onAdd, onClose }) {
+export function WordSheet({ sheet, onAdd, onClose, onPick }) {
+  const titles = { word: '查單字', ai: 'AI 解釋', chapter: '本章', summary: '本章重點', questions: '讀後思考題' };
+  const aiText = ['ai', 'summary', 'questions'].includes(sheet.mode);
   const r = sheet.result;
   return (
     <div className="rd-modal" onClick={onClose}>
       <section className="rd-modal-card" onClick={(e) => e.stopPropagation()}>
-        <h3>{sheet.mode === 'word' ? '查單字' : 'AI 解釋'}</h3>
+        <h3>{titles[sheet.mode] || 'AI 解釋'}</h3>
         <p className="quote">{sheet.text}</p>
         {sheet.loading && <p className="meta">查詢中…</p>}
         {sheet.error && <p className="notice error">{sheet.error}</p>}
@@ -270,7 +272,13 @@ export function WordSheet({ sheet, onAdd, onClose }) {
             )}
           </div>
         )}
-        {!sheet.loading && r && sheet.mode === 'ai' && <p className="ai-text">{r.text}</p>}
+        {!sheet.loading && r && aiText && <p className="ai-text">{r.text}</p>}
+        {sheet.mode === 'chapter' && (
+          <div className="rd-modal-actions">
+            <button className="primary" onClick={() => onPick('summary')}>本章重點</button>
+            <button onClick={() => onPick('questions')}>讀後思考題</button>
+          </div>
+        )}
         <div className="rd-modal-actions">
           {!sheet.loading && r && sheet.mode === 'word' && <button className="primary" onClick={onAdd}>加入單字庫</button>}
           <button onClick={onClose}>關閉</button>
