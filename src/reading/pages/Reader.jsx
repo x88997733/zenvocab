@@ -62,6 +62,15 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   // 分頁結果：用畫面上的隱藏區實際量測排版高度來切頁（不再用字數估算）
   const [pages, setPages] = useState(null);
   const measureRef = useRef(null);
+  // 字體載入完成後要重新分頁，否則換字型會讓換行數改變、最後一行被裁掉
+  const [fontTick, setFontTick] = useState(0);
+  useEffect(() => {
+    let live = true;
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => live && setFontTick((t) => t + 1));
+    return () => {
+      live = false;
+    };
+  }, []);
   useEffect(() => {
     const area = pageAreaRef.current;
     const measurer = measureRef.current;
@@ -69,7 +78,8 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       setPages(null);
       return;
     }
-    const cap = area.clientHeight;
+    // 預留安全距離：顯示區有 overflow:hidden，量測與實際排版若有一點誤差，最後一行就會被裁掉
+    const cap = area.clientHeight - 24;
     const fits = (items) => {
       measurer.innerHTML = items
         .map((c) => {
@@ -83,7 +93,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     };
     setPages(paginateMeasured(paragraphs, fits, (i) => isChapterStart(paragraphs[i])));
     measurer.innerHTML = '';
-  }, [paragraphs, paged, size.w, size.h, s.fontSize, s.lineHeight, s.margin, s.indent, s.font]);
+  }, [paragraphs, paged, size.w, size.h, fontTick, s.fontSize, s.lineHeight, s.margin, s.indent, s.font]);
 
   // 給朗讀流程用的最新值（避免閉包拿到舊資料）
   const latest = useRef({});
@@ -793,7 +803,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
             ref={measureRef}
             className="page-text"
             aria-hidden="true"
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'auto', overflow: 'visible', visibility: 'hidden', padding: `16px ${s.margin}px` }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, margin: '0 auto', maxWidth: 760, height: 'auto', overflow: 'visible', visibility: 'hidden', padding: `16px ${s.margin}px` }}
           />
           {pages && pages[pageIdx] && (
             <div className="page-text" style={{ padding: `16px ${s.margin}px` }}>
