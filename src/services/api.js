@@ -5,3 +5,4 @@ export const chapterQuestions=text=>request({action:'questions',word:text});
 export const newsDigest=headlines=>request({action:'digest',word:headlines});
 export const fetchNews=feed=>fetch(`/api/news?feed=${feed}`).then(async r=>{const d=await r.json().catch(()=>({})); if(!r.ok)throw new Error(d.error||'新聞讀取失敗'); return d;});
 export const newsBrief=headlines=>request({action:'brief',word:headlines});
+export const fetchArticle=url=>fetch(`/api/article?url=${encodeURIComponent(url)}`).then(async r=>{const d=await r.json().catch(()=>({})); if(!r.ok)throw new Error(d.error||'原文讀取失敗'); return d;});

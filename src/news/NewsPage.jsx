@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RefreshCw, Play, Pause, ExternalLink, Volume2, Star, Zap } from 'lucide-react';
+import { RefreshCw, Play, Pause, ExternalLink, Volume2, Star, Zap, Loader } from 'lucide-react';
 import { get, set } from 'idb-keyval';
-import { fetchNews, newsDigest, newsBrief } from '../services/api.js';
+import { fetchNews, fetchArticle, newsDigest, newsBrief } from '../services/api.js';
 import { todayKey } from '../reading/lib/store.js';
 import { splitSentences, pickDefaultVoice } from '../reading/lib/speech.js';
 
@@ -42,6 +42,7 @@ export default function NewsPage({ toast }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [speaking, setSpeaking] = useState(null);
+  const [fetching, setFetching] = useState(null);
   const runRef = useRef(0);
   const wantRef = useRef('top');
 
@@ -153,6 +154,27 @@ export default function NewsPage({ toast }) {
     }
   }
 
+  // 朗讀單則新聞的原文（抓不到全文時改唸標題）
+  async function readArticle(it, tag) {
+    if (speaking === tag) {
+      stop();
+      return;
+    }
+    stop();
+    const before = runRef.current;
+    setFetching(tag);
+    try {
+      const d = await fetchArticle(it.link);
+      if (runRef.current !== before) return; // 等待期間被按了停止或改播別的
+      speak(`${it.title}。${d.text}`, tag);
+    } catch (e) {
+      speak(it.title, tag);
+      toast?.(`${e.message || '無法取得全文'}，改唸標題`, 'info');
+    } finally {
+      setFetching(null);
+    }
+  }
+
   function toggleSave(item) {
     const exists = saved.some((x) => x.link === item.link);
     const next = exists ? saved.filter((x) => x.link !== item.link) : [...saved, item];
@@ -261,8 +283,8 @@ export default function NewsPage({ toast }) {
               <div className="news-item-foot">
                 <small>{[it.source, fmtTime(it.pubDate)].filter(Boolean).join(' · ')}</small>
                 <span className="news-item-btns">
-                  <button onClick={() => (speaking === tag ? stop() : speak(it.title, tag))} aria-label="朗讀">
-                    {speaking === tag ? <Pause /> : <Volume2 />}
+                  <button onClick={() => readArticle(it, tag)} aria-label="朗讀全文">
+                    {fetching === tag ? <Loader className="spin" /> : speaking === tag ? <Pause /> : <Volume2 />}
                   </button>
                   <button className={isSaved ? 'on' : ''} onClick={() => toggleSave(it)} aria-label="收藏">
                     <Star />
