@@ -341,8 +341,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
         const LL = latest.current;
         if (LL.s.pageMode === 'paged' && LL.pages) {
           const target = pageForPos(LL.pages, { para: i, start: range.start });
-          // 只往後跟頁：句子開頭若在前一頁（例如翻頁後的第一句），不可把使用者的翻頁拉回去
-          if (target > pageIdxRef.current) {
+          if (target >= 0 && target !== pageIdxRef.current) {
             pageIdxRef.current = target;
             setPageIdx(target);
           }
