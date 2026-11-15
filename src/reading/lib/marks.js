@@ -12,11 +12,7 @@ export function buildSegments(text, highlights = [], activeSentence = null) {
       from = at + h.text.length;
     }
   }
-  if (activeSentence && typeof activeSentence === 'object') {
-    // 句子範圍（相對於這段 text 的字元位置）：句子跨頁時，每一頁只標出自己那一部分
-    const { start, end } = activeSentence;
-    if (end > start) ranges.push({ start, end, mark: 'sent' });
-  } else if (activeSentence) {
+  if (activeSentence) {
     const at = text.indexOf(activeSentence);
     if (at >= 0) ranges.push({ start: at, end: at + activeSentence.length, mark: 'sent' });
   }
