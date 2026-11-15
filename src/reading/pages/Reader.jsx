@@ -199,6 +199,19 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     if (scroll && !paged) document.getElementById(`p-${clamped}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
+  // 段落中第 pos 個字所在的句子編號（與朗讀時的切句方式相同）
+  function sentenceAt(para, pos) {
+    const text = paragraphsRef.current?.[para] || '';
+    const all = splitSentences(text);
+    let cursor = 0;
+    for (const t of all) {
+      const at = text.indexOf(t, cursor);
+      cursor = at + t.length;
+      if (at + t.length > pos) return all.indexOf(t);
+    }
+    return Math.max(0, all.length - 1);
+  }
+
   function turnPage(delta) {
     const pg = latest.current.pages;
     if (!pg) return;
@@ -210,13 +223,16 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     const first = pg[next][0];
     pageIdxRef.current = next;
     setPageIdx(next);
+    let fromSent = 0;
     if (first) {
       anchorRef.current = { para: first.para, start: first.start };
       indexRef.current = first.para;
       setIndex(first.para);
       saveProgress(first.para);
+      fromSent = sentenceAt(first.para, first.start);
     }
-    if (playingRef.current) play();
+    // 朗讀中翻頁：從新頁第一個字所在的句子開始唸，不回到上一頁段落的開頭
+    if (playingRef.current) play(fromSent);
   }
 
   // 睡眠定時：每秒檢查一次，到時間就停止朗讀
