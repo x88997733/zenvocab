@@ -32,6 +32,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   const [playing, setPlaying] = useState(false);
   const [speechError, setSpeechError] = useState('');
   const [activeSent, setActiveSent] = useState(null);
+  const pendingSentRef = useRef(null);
   const [voices, setVoices] = useState([]);
   const [panel, setPanel] = useState(null); // null | 'toc' | 'settings'
   const [tab, setTab] = useState('toc');
@@ -272,6 +273,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     playingRef.current = false;
     setPlaying(false);
     setActiveSent(null);
+    pendingSentRef.current = null;
   }
 
   function speakFrom(i, run, fromSent = 0) {
@@ -299,7 +301,15 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     else document.getElementById(`p-${i}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
     const voice = L.voices.find((v) => v.voiceURI === L.s.voiceURI) || pickDefaultVoice(L.voices);
-    const sentences = splitSentences(paras[i]).slice(fromSent);
+    const all = splitSentences(paras[i]);
+    // 每句在整段中的字元位置（跨頁時用來只標出該頁的那一部分）
+    let cursor = 0;
+    const starts = all.map((t) => {
+      const at = paras[i].indexOf(t, cursor);
+      cursor = at + t.length;
+      return at;
+    });
+    const sentences = all.slice(fromSent);
     const next = () => {
       if (run === runIdRef.current && indexRef.current === i) speakFrom(i + 1, run);
     };
@@ -309,7 +319,11 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       if (voice) u.voice = voice;
       u.rate = L.s.rate;
       u.onstart = () => {
-        if (run === runIdRef.current) setActiveSent({ para: i, text });
+        if (run !== runIdRef.current) return;
+        const range = { para: i, start: starts[fromSent + k], end: starts[fromSent + k] + text.length };
+        // 使用者正在選字時先不更新高亮：更新會重畫段落，會把選取範圍清掉
+        if (window.getSelection && !window.getSelection().isCollapsed) pendingSentRef.current = range;
+        else setActiveSent(range);
       };
       if (k === sentences.length - 1) u.onend = next;
       // 出錯時立刻停止並顯示原因，避免段落一直被跳過
@@ -394,6 +408,11 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       timer = setTimeout(() => {
         const sel = window.getSelection();
         const root = rootRef.current;
+        // 選取結束後，補上選字期間暫停的朗讀高亮
+        if (sel && sel.isCollapsed && pendingSentRef.current) {
+          setActiveSent(pendingSentRef.current);
+          pendingSentRef.current = null;
+        }
         if (!sel || sel.isCollapsed || !root) {
           setSelection(null);
           return;
@@ -674,9 +693,15 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
   const percent = paragraphs ? percentAt(offsetsRef.current, paged && pages ? (pages[pageIdx]?.[0]?.para ?? index) : index) : book.percent;
   const chapter = currentChapter(chapters, curPara);
 
-  function renderSegs(text, para) {
+  // offset：這段 text 在整段落中的起始位置（分頁時每頁只顯示段落的一部分）
+  function renderSegs(text, para, offset = 0) {
     const hls = anno.highlights.filter((h) => h.para === para);
-    const active = activeSent && activeSent.para === para ? activeSent.text : null;
+    let active = null;
+    if (activeSent && activeSent.para === para) {
+      const start = Math.max(0, activeSent.start - offset);
+      const end = Math.min(text.length, activeSent.end - offset);
+      if (end > start) active = { start, end };
+    }
     return buildSegments(text, hls, active).map((seg, k) => {
       if (seg.mark === 'hl') return <mark key={k} className={`hl-${seg.color || 'yellow'}`}>{seg.text}</mark>;
       if (seg.mark === 'sent' || seg.sentence) return <span key={k} className="sent">{seg.text}</span>;
@@ -815,7 +840,7 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
                   className={`para${c.start === 0 && isHeading(c.para) ? ' heading' : ''}`}
                   style={{ textIndent: s.indent && c.start === 0 && !isHeading(c.para) ? '2em' : 0 }}
                 >
-                  {renderSegs(paragraphs[c.para].slice(c.start, c.end), c.para)}
+                  {renderSegs(paragraphs[c.para].slice(c.start, c.end), c.para, c.start)}
                 </p>
               ))}
             </div>
