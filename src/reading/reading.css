@@ -165,3 +165,20 @@
 .rd-root .sleep-note { font-size: 12px; color: var(--muted); margin: 0; text-align: center; }
 /* 長按段落朗讀時，暫時關閉文字選取，避免 iOS 把長按變成選字 */
 .rd-root .reader.pressing, .rd-root .reader.pressing * { -webkit-user-select: none; user-select: none; }
+
+/* 讀書心得 */
+.rd-root textarea, .rd-root input[type=text], .rd-root .field input { font: inherit; color: inherit; width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fff; resize: vertical; }
+.rd-root .note-title { font-size: 18px; text-align: center; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rd-root .note-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.rd-root .note-card p { margin: 0; line-height: 1.7; }
+.rd-root .note-question { font-size: 17px; font-weight: 600; }
+.rd-root .note-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.rd-root .note-body { font-size: 16px; line-height: 1.8; }
+.rd-root .note-item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+.rd-root .note-head { width: 100%; border: none; border-radius: 0; background: transparent; text-align: left; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.rd-root .note-open { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.rd-root .note-pre { white-space: pre-wrap; font: inherit; font-size: 15px; line-height: 1.8; margin: 0; }
+.rd-root .phys-form { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.rd-root .phys-form h2 { margin: 0; }
+.rd-root .phys-preview { width: 120px; height: 170px; object-fit: cover; border-radius: 8px; align-self: center; }
+.rd-root .field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }

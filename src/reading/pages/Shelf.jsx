@@ -3,11 +3,17 @@ import { parseBook } from '../lib/parse.js';
 import { toTraditional } from '../lib/convert.js';
 import { loadBooks, saveBooks, saveText, loadStats, saveCover, loadCover, deleteBookData, saveChapters } from '../lib/store.js';
 import { statusOf, formatDuration } from '../lib/progress.js';
+import { compressImage } from '../../utils/image.js';
+import { readBookCover, readToc } from '../../services/api.js';
+import { lookupBook } from '../lib/bookinfo.js';
 
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 
-export default function Shelf({ books, onOpen, onChanged }) {
+export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) {
   const inputRef = useRef(null);
+  const coverRef = useRef(null);
+  const tocRef = useRef(null);
+  const [phys, setPhys] = useState(null); // 實體書登錄表單：{ cover, title, author, isbn, description, toc, busy }
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [totals, setTotals] = useState({});
@@ -85,6 +91,92 @@ export default function Shelf({ books, onOpen, onChanged }) {
     onChanged();
   }
 
+  // ---- 實體書登錄 ----
+  function startPhysical() {
+    setPhys({ cover: null, title: '', author: '', isbn: '', description: '', toc: '', busy: '' });
+    setTimeout(() => coverRef.current?.click(), 0);
+  }
+
+  async function onCoverPicked(e) {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setPhys((p) => ({ ...(p || {}), busy: '辨識封面中…' }));
+    try {
+      const img = await compressImage(f);
+      const r = await readBookCover(img.data, img.mimeType);
+      const info = await fetchBookInfo({ isbn: r.isbn, title: r.title, author: r.author });
+      setPhys((p) => ({
+        ...(p || {}),
+        cover: img,
+        title: info?.title || r.title || p?.title || '',
+        author: info?.author || r.author || p?.author || '',
+        isbn: r.isbn || p?.isbn || '',
+        description: info?.description || p?.description || '',
+        busy: '',
+      }));
+    } catch (err) {
+      setPhys((p) => ({ ...(p || {}), busy: '' }));
+      toast?.(err.message, 'error');
+    }
+  }
+
+  async function fetchBookInfo(query) {
+    try {
+      const info = await lookupBook(query);
+      if (!info) return null;
+      return { title: toTraditional(info.title), author: toTraditional(info.author), description: toTraditional(info.description) };
+    } catch {
+      return null;
+    }
+  }
+
+  async function onTocPicked(e) {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setPhys((p) => ({ ...(p || {}), busy: '讀取目錄中…' }));
+    try {
+      const img = await compressImage(f);
+      const r = await readToc(img.data, img.mimeType);
+      setPhys((p) => ({ ...(p || {}), toc: toTraditional((r.text || '').trim()), busy: '' }));
+    } catch (err) {
+      setPhys((p) => ({ ...(p || {}), busy: '' }));
+      toast?.(err.message, 'error');
+    }
+  }
+
+  async function savePhysical() {
+    if (!phys?.title.trim()) return toast?.('請填入書名', 'info');
+    const current = await loadBooks();
+    const id = crypto.randomUUID();
+    if (phys.cover) {
+      const blob = await (await fetch(phys.cover.preview)).blob();
+      await saveCover(id, blob);
+    }
+    await saveText(id, []);
+    current.push({
+      id,
+      title: phys.title.trim(),
+      author: phys.author.trim(),
+      isbn: phys.isbn.trim(),
+      description: phys.description,
+      toc: phys.toc,
+      physical: true,
+      index: 0,
+      percent: 0,
+      chars: 0,
+      paragraphCount: 0,
+      addedAt: Date.now(),
+      hasCover: !!phys.cover,
+      lastRead: null,
+    });
+    await saveBooks(current);
+    setPhys(null);
+    toast?.('已登錄實體書');
+    onChanged();
+  }
+
   async function removeBook(book) {
     if (!confirm(`確定要刪除《${book.title}》嗎？`)) return;
     const current = (await loadBooks()).filter((b) => b.id !== book.id);
@@ -142,6 +234,9 @@ export default function Shelf({ books, onOpen, onChanged }) {
               <button onClick={() => setSelecting(true)} disabled={books.length === 0}>
                 選取
               </button>
+              <button onClick={startPhysical} disabled={!!busy || !!phys}>
+                登錄實體書
+              </button>
               <button className="primary" onClick={() => inputRef.current?.click()} disabled={!!busy}>
                 匯入書籍
               </button>
@@ -160,6 +255,35 @@ export default function Shelf({ books, onOpen, onChanged }) {
 
       {busy && <p className="notice">{busy}</p>}
       {error && <p className="notice error">{error}</p>}
+
+      <input ref={coverRef} type="file" accept="image/*" capture="environment" hidden onChange={onCoverPicked} />
+      <input ref={tocRef} type="file" accept="image/*" capture="environment" hidden onChange={onTocPicked} />
+
+      {phys && (
+        <section className="phys-form">
+          <h2>登錄實體書</h2>
+          {phys.cover ? <img className="phys-preview" src={phys.cover.preview} alt="封面" /> : <p className="meta">先拍封面，AI 會幫你填入書名與作者。</p>}
+          <div className="note-actions">
+            <button onClick={() => coverRef.current?.click()} disabled={!!phys.busy}>拍封面</button>
+            <button onClick={() => tocRef.current?.click()} disabled={!!phys.busy}>拍目錄（選填）</button>
+          </div>
+          {phys.busy && <p className="notice">{phys.busy}</p>}
+          <label className="field">書名
+            <input value={phys.title} onChange={(e) => setPhys({ ...phys, title: e.target.value })} />
+          </label>
+          <label className="field">作者
+            <input value={phys.author} onChange={(e) => setPhys({ ...phys, author: e.target.value })} />
+          </label>
+          <label className="field">ISBN（選填）
+            <input value={phys.isbn} onChange={(e) => setPhys({ ...phys, isbn: e.target.value })} />
+          </label>
+          {phys.toc && <p className="meta">目錄：{phys.toc.split('\n').slice(0, 6).join('、')}{phys.toc.split('\n').length > 6 ? '…' : ''}</p>}
+          <div className="note-actions">
+            <button className="ghost" onClick={() => setPhys(null)}>取消</button>
+            <button className="primary" onClick={savePhysical} disabled={!!phys.busy || !phys.title.trim()}>儲存</button>
+          </div>
+        </section>
+      )}
 
       {books.length === 0 && !busy && (
         <p className="empty">還沒有書。按「匯入書籍」，可以選 TXT、EPUB 或 PDF。</p>
@@ -185,16 +309,23 @@ export default function Shelf({ books, onOpen, onChanged }) {
               </button>
               <div className="book-info">
                 <h2 title={book.title}>{book.title}</h2>
-                <p className="meta">
-                  {status} · {book.percent}%
-                </p>
-                <div className="bar">
-                  <div style={{ width: `${book.percent}%` }} />
-                </div>
-                <p className="meta">閱讀 {formatDuration(totals[book.id] || 0)}</p>
+                {book.physical ? (
+                  <p className="meta">實體書</p>
+                ) : (
+                  <>
+                    <p className="meta">
+                      {status} · {book.percent}%
+                    </p>
+                    <div className="bar">
+                      <div style={{ width: `${book.percent}%` }} />
+                    </div>
+                    <p className="meta">閱讀 {formatDuration(totals[book.id] || 0)}</p>
+                  </>
+                )}
                 {!selecting && (
                   <div className="card-actions">
-                    <button onClick={() => onOpen(book.id)}>{book.percent > 0 ? '繼續' : '開始'}</button>
+                    {!book.physical && <button onClick={() => onOpen(book.id)}>{book.percent > 0 ? '繼續' : '開始'}</button>}
+                    <button onClick={() => onWriteNote(book)}>寫心得</button>
                     <button className="ghost" onClick={() => removeBook(book)}>
                       刪除
                     </button>
