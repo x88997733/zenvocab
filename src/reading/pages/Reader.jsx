@@ -199,25 +199,6 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     if (scroll && !paged) document.getElementById(`p-${clamped}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
-  // 句子在段落中的起始位置與句子列表（與朗讀時的切句方式相同）
-  function sentenceLayout(para) {
-    const text = paragraphsRef.current?.[para] || '';
-    const all = splitSentences(text);
-    let cursor = 0;
-    const starts = all.map((t) => {
-      const at = text.indexOf(t, cursor);
-      cursor = at + t.length;
-      return at;
-    });
-    return { all, starts };
-  }
-  // 段落中第 pos 個字所在的句子編號（若落在句子之間，取下一句）
-  function sentenceAt(para, pos) {
-    const { all, starts } = sentenceLayout(para);
-    for (let j = 0; j < all.length; j++) if (starts[j] + all[j].length > pos) return j;
-    return Math.max(0, all.length - 1);
-  }
-
   function turnPage(delta) {
     const pg = latest.current.pages;
     if (!pg) return;
@@ -229,16 +210,13 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     const first = pg[next][0];
     pageIdxRef.current = next;
     setPageIdx(next);
-    let fromSent = 0;
     if (first) {
       anchorRef.current = { para: first.para, start: first.start };
       indexRef.current = first.para;
       setIndex(first.para);
       saveProgress(first.para);
-      fromSent = sentenceAt(first.para, first.start);
     }
-    // 朗讀中翻頁：從新頁第一個字所在的句子開始唸（不回到上一頁的段落開頭）
-    if (playingRef.current) play(fromSent);
+    if (playingRef.current) play();
   }
 
   // 睡眠定時：每秒檢查一次，到時間就停止朗讀
@@ -323,8 +301,14 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
     else document.getElementById(`p-${i}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
     const voice = L.voices.find((v) => v.voiceURI === L.s.voiceURI) || pickDefaultVoice(L.voices);
+    const all = splitSentences(paras[i]);
     // 每句在整段中的字元位置（跨頁時用來只標出該頁的那一部分）
-    const { all, starts } = sentenceLayout(i);
+    let cursor = 0;
+    const starts = all.map((t) => {
+      const at = paras[i].indexOf(t, cursor);
+      cursor = at + t.length;
+      return at;
+    });
     const sentences = all.slice(fromSent);
     const next = () => {
       if (run === runIdRef.current && indexRef.current === i) speakFrom(i + 1, run);
@@ -337,15 +321,6 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
       u.onstart = () => {
         if (run !== runIdRef.current) return;
         const range = { para: i, start: starts[fromSent + k], end: starts[fromSent + k] + text.length };
-        // 句子跨到下一頁時，自動翻到這句所在的頁（朗讀不會停在舊頁面上）
-        const LL = latest.current;
-        if (LL.s.pageMode === 'paged' && LL.pages) {
-          const target = pageForPos(LL.pages, { para: i, start: range.start });
-          if (target >= 0 && target !== pageIdxRef.current) {
-            pageIdxRef.current = target;
-            setPageIdx(target);
-          }
-        }
         // 使用者正在選字時先不更新高亮：更新會重畫段落，會把選取範圍清掉
         if (window.getSelection && !window.getSelection().isCollapsed) pendingSentRef.current = range;
         else setActiveSent(range);
