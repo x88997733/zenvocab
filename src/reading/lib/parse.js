@@ -174,19 +174,69 @@ async function renderPdfCover(pdf) {
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
 }
 
+// PDF 的每一行文字都會以換行結束，不能每行都當成一段。
+// 依照版面判斷段落：段首縮排、或上一行明顯短於版面寬度（段尾）才換段，其餘接在同一段。
+export function joinPdfLines(lines) {
+  const mode = (arr) => {
+    const count = new Map();
+    arr.forEach((v) => count.set(v, (count.get(v) || 0) + 1));
+    return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+  };
+  const clean = lines.filter((l) => l.text.trim());
+  if (clean.length === 0) return [];
+  const left = mode(clean.map((l) => Math.round(l.x0)));
+  const sortedRight = clean.map((l) => l.x1).sort((a, b) => a - b);
+  const right = sortedRight[Math.floor(sortedRight.length * 0.9)] ?? 0;
+
+  const out = [];
+  let cur = '';
+  clean.forEach((l, i) => {
+    const text = l.text.trim();
+    const prev = clean[i - 1];
+    const newPage = prev && l.page !== prev.page;
+    const indented = l.x0 > left + l.size * 0.5;
+    const prevShort = prev && prev.x1 < right - prev.size * 1.5;
+    if (!cur || newPage || indented || prevShort) {
+      if (cur) out.push(cur);
+      cur = text;
+    } else {
+      const needsSpace = /[A-Za-z]$/.test(cur) && /^[A-Za-z]/.test(text);
+      cur += (needsSpace ? ' ' : '') + text;
+    }
+  });
+  if (cur) out.push(cur);
+  return out;
+}
+
 export async function parsePdf(file) {
   const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-  let text = '';
+  const lines = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
+    let line = null;
     for (const item of content.items) {
-      text += item.str;
-      text += item.hasEOL ? '\n' : '';
+      if (!item.str) {
+        if (item.hasEOL && line) {
+          lines.push(line);
+          line = null;
+        }
+        continue;
+      }
+      const x = item.transform[4];
+      const size = Math.abs(item.transform[3]) || item.height || 12;
+      if (!line) line = { text: '', x0: x, x1: x, size, page: i };
+      line.text += item.str;
+      line.x1 = x + (item.width || 0);
+      line.size = Math.max(line.size, size);
+      if (item.hasEOL) {
+        lines.push(line);
+        line = null;
+      }
     }
-    text += '\n';
+    if (line) lines.push(line);
   }
-  const paragraphs = splitParagraphs(text);
+  const paragraphs = joinPdfLines(lines);
   if (paragraphs.length === 0) throw new Error('讀不到文字，這可能是掃描版 PDF（目前不支援）');
 
   let cover = null;
