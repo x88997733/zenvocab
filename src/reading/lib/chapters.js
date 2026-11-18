@@ -34,3 +34,11 @@ export function isChapterStart(text) {
   const t = (text || '').trim();
   return t.length > 0 && t.length <= 30 && CHAPTER_RE.test(t);
 }
+
+// 是否要為第 i 段換新的一頁：章節標題前面是正文才換頁。
+// 目錄是一連串短的章節名（前一行也很短），應該排在同一頁，不要每章各佔一頁。
+export function startsNewPage(paragraphs, i) {
+  if (!isChapterStart(paragraphs[i])) return false;
+  if (i === 0) return true;
+  return (paragraphs[i - 1] || '').trim().length > 40;
+}
