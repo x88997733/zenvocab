@@ -213,3 +213,28 @@
 .rd-root .analysis-body { white-space: pre-wrap; font: inherit; font-size: 15px; line-height: 1.8; margin: 0; overflow-y: auto; padding-right: 4px; }
 .rd-root .analysis-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
 .rd-root .analysis-foot .meta { font-size: 12px; }
+
+/* ===== 統一樣式修正 ===== */
+/* 書櫃卡片按鈕：2x2 排列，文字不換行 */
+.rd-root .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.rd-root .card-actions button { padding: 7px 6px; font-size: 13px; white-space: nowrap; min-width: 0; }
+.rd-root .card-actions button.ghost { color: #a8432f; }
+
+/* 沒有封面的書：用書名大字排出封面質感 */
+.rd-root .cover.cover-fallback { flex-direction: column; justify-content: space-between; align-items: stretch; text-align: left; padding: 14px 12px; font-weight: 700; background-image: linear-gradient(160deg, rgba(255,255,255,0.14), rgba(0,0,0,0.12)); }
+.rd-root .cover-fallback .cover-title { font-size: 18px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; word-break: break-all; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+.rd-root .cover-fallback .cover-rule { height: 2px; width: 36px; background: rgba(255,255,255,0.7); border-radius: 2px; margin-top: 8px; }
+.rd-root .cover-fallback .cover-author { font-size: 11px; font-weight: 400; opacity: 0.85; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 閱讀頁頂列：書名與進度各一行，工具列只用圖示 */
+.rd-root .reader-title .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.rd-root .reader-tools button { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border: none; background: transparent; color: var(--accent); }
+.rd-root .reader-tools button.on { background: #efe2c6; border-radius: 10px; }
+
+/* 空狀態 */
+.rd-root .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 40px 20px; color: var(--muted); }
+.rd-root .empty-state strong { color: var(--ink); font-size: 16px; }
+.rd-root .empty-state p { margin: 0; font-size: 13px; line-height: 1.6; max-width: 280px; }
+.rd-root .empty-icon { width: 64px; height: 64px; border-radius: 50%; background: #efe2c6; color: var(--accent); display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.rd-root .empty-state button { margin-top: 10px; }
+.rd-root input[type=range] { accent-color: var(--accent); }

@@ -7,8 +7,12 @@ import { compressImage } from '../../utils/image.js';
 import { readBookCover, readToc } from '../../services/api.js';
 import { lookupBook } from '../lib/bookinfo.js';
 import BookAnalysis from './BookAnalysis.jsx';
+import EmptyState from '../components/EmptyState.jsx';
+import { BookOpen, Library, CheckCircle2 } from 'lucide-react';
 
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+// 沒有封面的書：依書名取色，做成漸層封面
+const coverBg = (title) => `linear-gradient(160deg, hsl(${hue(title)} 42% 48%), hsl(${hue(title)} 40% 30%))`;
 
 export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) {
   const inputRef = useRef(null);
@@ -249,11 +253,19 @@ export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) 
         onClick={selecting ? () => toggleSelect(book.id) : undefined}
       >
         <button
-          className={covers[book.id] ? 'cover has-img' : 'cover'}
-          style={covers[book.id] ? undefined : { background: `hsl(${hue(book.title)} 45% 42%)` }}
+          className={covers[book.id] ? 'cover has-img' : 'cover cover-fallback'}
+          style={covers[book.id] ? undefined : { background: coverBg(book.title) }}
           onClick={selecting ? undefined : () => onOpen(book.id)}
         >
-          {covers[book.id] ? <img src={covers[book.id]} alt="" /> : <span>{book.title.slice(0, 6)}</span>}
+          {covers[book.id] ? (
+            <img src={covers[book.id]} alt="" />
+          ) : (
+            <>
+              <span className="cover-title">{book.title}</span>
+              <span className="cover-rule" />
+              {book.author && <span className="cover-author">{book.author}</span>}
+            </>
+          )}
           {selecting && <span className={`check${isSelected ? ' on' : ''}`}>{isSelected ? '✓' : ''}</span>}
         </button>
         <div className="book-info">
@@ -356,7 +368,13 @@ export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) 
       )}
 
       {books.length === 0 && !busy && (
-        <p className="empty">還沒有書。按「匯入書籍」，可以選 TXT、EPUB 或 PDF。</p>
+        <EmptyState
+          icon={Library}
+          title="書櫃還是空的"
+          desc="匯入 TXT、EPUB 或 PDF，或登錄實體書的封面，就能開始。"
+          action="匯入書籍"
+          onAction={() => inputRef.current?.click()}
+        />
       )}
 
       {!selecting && (
@@ -374,7 +392,13 @@ export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) 
         <div className="shelf-grid">{(selecting ? sortedBooks : reading).map(renderCard)}</div>
       ) : (
         <div className="bookcase">
-          {finished.length === 0 && <p className="empty">還沒有讀完的書。電子書讀到最後一段會自動歸到這裡。</p>}
+          {finished.length === 0 && (
+            <EmptyState
+              icon={CheckCircle2}
+              title="還沒有讀完的書"
+              desc="電子書讀到最後一段會自動歸到這裡，實體書可以在閱讀中的卡片上標記。"
+            />
+          )}
           {rows(finished, 5).map((row, r) => (
             <div key={r} className="bookcase-row">
               <div className="bookcase-spines">
@@ -448,8 +472,8 @@ function OpenBook({ book, coverUrl, onClose, onRead, onWriteNote, onToggleFinish
               關閉
             </button>
           </div>
-          <div className="ob-cover" style={coverUrl ? undefined : { background: `hsl(${hue(book.title)} 45% 42%)` }}>
-            {coverUrl ? <img src={coverUrl} alt="" /> : <span>{book.title}</span>}
+          <div className="ob-cover" style={coverUrl ? undefined : { background: coverBg(book.title) }}>
+            {coverUrl ? <img src={coverUrl} alt="" /> : <span className="cover-title">{book.title}</span>}
           </div>
         </div>
       </div>

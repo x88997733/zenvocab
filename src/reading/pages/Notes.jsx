@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { loadNotes, deleteNote } from '../lib/notes.js';
+import EmptyState from '../components/EmptyState.jsx';
+import { NotebookPen } from 'lucide-react';
 
 const fmt = (t) => new Date(t).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
@@ -19,7 +21,14 @@ export default function Notes({ onEdit }) {
     refresh();
   }
 
-  if (notes.length === 0) return <p className="empty">還沒有心得。讀完書後，在書櫃按「寫心得」就能開始。</p>;
+  if (notes.length === 0)
+    return (
+      <EmptyState
+        icon={NotebookPen}
+        title="還沒有心得"
+        desc="讀完書後，在書櫃的卡片或打開的書上按「寫心得」，AI 會陪你整理想法。"
+      />
+    );
 
   return (
     <section>

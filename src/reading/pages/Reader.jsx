@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Moon, Bookmark, BookmarkCheck, List, Type } from 'lucide-react';
 import { loadBooks, saveBooks, loadText, addReadingSeconds, loadChapters, loadAnno, saveAnno } from '../lib/store.js';
 import { offsetsOf, percentAt, statusOf } from '../lib/progress.js';
 import { splitSentences, pickDefaultVoice } from '../lib/speech.js';
@@ -763,23 +764,30 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
           </span>
         </div>
         <div className="reader-tools">
-          <button className="ghost" onClick={toggleNight} aria-label="夜間模式">
-            🌙
+          <button className="ghost" onClick={toggleNight} aria-label="夜間模式" title="夜間模式">
+            <Moon size={19} />
           </button>
-          <button className="ghost" onClick={toggleBookmark}>
-            {isBookmarked ? '已加書籤' : '書籤'}
+          <button
+            className={`ghost${isBookmarked ? ' on' : ''}`}
+            onClick={toggleBookmark}
+            aria-label={isBookmarked ? '已加書籤' : '加入書籤'}
+            title={isBookmarked ? '已加書籤' : '加入書籤'}
+          >
+            {isBookmarked ? <BookmarkCheck size={19} /> : <Bookmark size={19} />}
           </button>
           <button
             className="ghost"
+            aria-label="目錄"
+            title="目錄"
             onClick={() => {
               setTab('toc');
               setPanel('toc');
             }}
           >
-            目錄
+            <List size={19} />
           </button>
-          <button className="ghost" onClick={() => setPanel('settings')}>
-            Aa
+          <button className="ghost" aria-label="閱讀設定" title="閱讀設定" onClick={() => setPanel('settings')}>
+            <Type size={19} />
           </button>
         </div>
       </header>}
