@@ -182,3 +182,26 @@
 .rd-root .phys-form h2 { margin: 0; }
 .rd-root .phys-preview { width: 120px; height: 170px; object-fit: cover; border-radius: 8px; align-self: center; }
 .rd-root .field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+
+/* 閱讀中 / 已讀完 切換 */
+.rd-root .shelf-seg { margin-bottom: 16px; }
+
+/* 已讀完：書櫃 */
+.rd-root .bookcase { background: linear-gradient(#f3ead8, #eadfc8); border: 1px solid var(--line); border-radius: 14px; padding: 12px 10px 0; }
+.rd-root .bookcase-row { display: flex; flex-direction: column; }
+.rd-root .bookcase-spines { display: flex; gap: 6px; align-items: flex-end; justify-content: flex-start; padding: 0 6px; min-height: 230px; }
+.rd-root .spine { width: 54px; height: 220px; padding: 10px 4px; border: none; border-radius: 4px 4px 2px 2px; color: #fff; box-shadow: inset -3px 0 0 rgba(0,0,0,0.18); display: flex; justify-content: center; overflow: hidden; cursor: pointer; }
+.rd-root .spine span { writing-mode: vertical-rl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 100%; font-size: 15px; letter-spacing: 0.1em; }
+.rd-root .bookcase-plank { height: 14px; background: linear-gradient(#a57745, #8a5a2b); border-radius: 3px; margin: 0 4px 18px; box-shadow: 0 3px 4px rgba(0,0,0,0.15); }
+
+/* 打開書本的動畫 */
+.rd-root .ob-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(30, 24, 16, 0.6); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.rd-root .ob-stage { perspective: 1400px; }
+.rd-root .ob-book { position: relative; width: min(78vw, 300px); height: 440px; transform-style: preserve-3d; }
+.rd-root .ob-page { position: absolute; inset: 0; background: var(--card); border-radius: 6px 10px 10px 6px; padding: 28px 22px; display: flex; flex-direction: column; gap: 12px; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+.rd-root .ob-page h2 { margin: 0; font-size: 20px; }
+.rd-root .ob-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.rd-root .ob-actions button { width: 100%; }
+.rd-root .ob-cover { position: absolute; inset: 0; z-index: 2; transform-origin: left center; transition: transform 0.9s cubic-bezier(0.4, 0.1, 0.2, 1); backface-visibility: hidden; border-radius: 4px 10px 10px 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; font-weight: 600; padding: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+.rd-root .ob-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rd-root .ob-book.is-open .ob-cover { transform: rotateY(-165deg); }

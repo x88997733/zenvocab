@@ -20,6 +20,8 @@ export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) 
   const [covers, setCovers] = useState({});
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
+  const [view, setView] = useState('reading'); // 'reading' | 'finished'
+  const [opened, setOpened] = useState(null); // 已讀完書櫃中打開的書
 
   // 載入封面（Blob → object URL），換書或卸載時釋放
   useEffect(() => {
@@ -216,6 +218,72 @@ export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) 
     onChanged();
   }
 
+  // 讀完：電子書進度 100%，實體書可手動標記
+  const isFinished = (b) => (b.physical ? !!b.finished : (b.percent || 0) >= 100);
+  // 閱讀中依最後閱讀時間排序（最近看的在最前面）
+  const sortedBooks = [...books].sort((a, b) => (b.lastRead || 0) - (a.lastRead || 0) || (b.addedAt || 0) - (a.addedAt || 0));
+  const reading = sortedBooks.filter((b) => !isFinished(b));
+  const finished = sortedBooks.filter(isFinished);
+  const rows = (list, n) => {
+    const out = [];
+    for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n));
+    return out;
+  };
+
+  async function toggleFinished(book) {
+    const current = await loadBooks();
+    await saveBooks(current.map((b) => (b.id === book.id ? { ...b, finished: !b.finished } : b)));
+    setOpened(null);
+    onChanged();
+  }
+
+  function renderCard(book) {
+    const status = statusOf(book.percent);
+    const isSelected = selected.has(book.id);
+    return (
+      <article
+        key={book.id}
+        className={`book-card${selecting && isSelected ? ' is-selected' : ''}`}
+        onClick={selecting ? () => toggleSelect(book.id) : undefined}
+      >
+        <button
+          className={covers[book.id] ? 'cover has-img' : 'cover'}
+          style={covers[book.id] ? undefined : { background: `hsl(${hue(book.title)} 45% 42%)` }}
+          onClick={selecting ? undefined : () => onOpen(book.id)}
+        >
+          {covers[book.id] ? <img src={covers[book.id]} alt="" /> : <span>{book.title.slice(0, 6)}</span>}
+          {selecting && <span className={`check${isSelected ? ' on' : ''}`}>{isSelected ? '✓' : ''}</span>}
+        </button>
+        <div className="book-info">
+          <h2 title={book.title}>{book.title}</h2>
+          {book.physical ? (
+            <p className="meta">實體書</p>
+          ) : (
+            <>
+              <p className="meta">
+                {status} · {book.percent}%
+              </p>
+              <div className="bar">
+                <div style={{ width: `${book.percent}%` }} />
+              </div>
+              <p className="meta">閱讀 {formatDuration(totals[book.id] || 0)}</p>
+            </>
+          )}
+          {!selecting && (
+            <div className="card-actions">
+              {!book.physical && <button onClick={() => onOpen(book.id)}>{book.percent > 0 ? '繼續' : '開始'}</button>}
+              <button onClick={() => onWriteNote(book)}>寫心得</button>
+              {book.physical && <button onClick={() => toggleFinished(book)}>標記已讀完</button>}
+              <button className="ghost" onClick={() => removeBook(book)}>
+                刪除
+              </button>
+            </div>
+          )}
+        </div>
+      </article>
+    );
+  }
+
   return (
     <section className="page">
       <header className="page-header">
@@ -289,53 +357,97 @@ export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) 
         <p className="empty">還沒有書。按「匯入書籍」，可以選 TXT、EPUB 或 PDF。</p>
       )}
 
-      <div className="shelf-grid">
-        {books.map((book) => {
-          const status = statusOf(book.percent);
-          const isSelected = selected.has(book.id);
-          return (
-            <article
-              key={book.id}
-              className={`book-card${selecting && isSelected ? ' is-selected' : ''}`}
-              onClick={selecting ? () => toggleSelect(book.id) : undefined}
-            >
-              <button
-                className={covers[book.id] ? 'cover has-img' : 'cover'}
-                style={covers[book.id] ? undefined : { background: `hsl(${hue(book.title)} 45% 42%)` }}
-                onClick={selecting ? undefined : () => onOpen(book.id)}
-              >
-                {covers[book.id] ? <img src={covers[book.id]} alt="" /> : <span>{book.title.slice(0, 6)}</span>}
-                {selecting && <span className={`check${isSelected ? ' on' : ''}`}>{isSelected ? '✓' : ''}</span>}
-              </button>
-              <div className="book-info">
-                <h2 title={book.title}>{book.title}</h2>
-                {book.physical ? (
-                  <p className="meta">實體書</p>
-                ) : (
-                  <>
-                    <p className="meta">
-                      {status} · {book.percent}%
-                    </p>
-                    <div className="bar">
-                      <div style={{ width: `${book.percent}%` }} />
-                    </div>
-                    <p className="meta">閱讀 {formatDuration(totals[book.id] || 0)}</p>
-                  </>
-                )}
-                {!selecting && (
-                  <div className="card-actions">
-                    {!book.physical && <button onClick={() => onOpen(book.id)}>{book.percent > 0 ? '繼續' : '開始'}</button>}
-                    <button onClick={() => onWriteNote(book)}>寫心得</button>
-                    <button className="ghost" onClick={() => removeBook(book)}>
-                      刪除
-                    </button>
-                  </div>
-                )}
+      {!selecting && (
+        <div className="rd-seg shelf-seg">
+          <button className={view === 'reading' ? 'active' : ''} onClick={() => setView('reading')}>
+            閱讀中（{reading.length}）
+          </button>
+          <button className={view === 'finished' ? 'active' : ''} onClick={() => setView('finished')}>
+            已讀完（{finished.length}）
+          </button>
+        </div>
+      )}
+
+      {view === 'reading' || selecting ? (
+        <div className="shelf-grid">{(selecting ? sortedBooks : reading).map(renderCard)}</div>
+      ) : (
+        <div className="bookcase">
+          {finished.length === 0 && <p className="empty">還沒有讀完的書。電子書讀到最後一段會自動歸到這裡。</p>}
+          {rows(finished, 5).map((row, r) => (
+            <div key={r} className="bookcase-row">
+              <div className="bookcase-spines">
+                {row.map((book) => (
+                  <button
+                    key={book.id}
+                    className="spine"
+                    style={{ background: `hsl(${hue(book.title)} 38% 34%)` }}
+                    onClick={() => setOpened(book)}
+                    title={book.title}
+                  >
+                    <span>{book.title}</span>
+                  </button>
+                ))}
               </div>
-            </article>
-          );
-        })}
-      </div>
+              <div className="bookcase-plank" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {opened && (
+        <OpenBook
+          book={opened}
+          coverUrl={covers[opened.id]}
+          onClose={() => setOpened(null)}
+          onRead={(id) => {
+            setOpened(null);
+            onOpen(id);
+          }}
+          onWriteNote={(b) => {
+            setOpened(null);
+            onWriteNote(b);
+          }}
+          onToggleFinished={toggleFinished}
+        />
+      )}
     </section>
   );
 }
+
+// 已讀完的書：點書脊後，封面像翻開書一樣打開，露出書頁資訊
+function OpenBook({ book, coverUrl, onClose, onRead, onWriteNote, onToggleFinished }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setOpen(true), 40);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="ob-backdrop" onClick={onClose}>
+      <div className="ob-stage" onClick={(e) => e.stopPropagation()}>
+        <div className={`ob-book${open ? ' is-open' : ''}`}>
+          <div className="ob-page">
+            <h2>{book.title}</h2>
+            {book.author && <p className="meta">{book.author}</p>}
+            <p className="meta">{book.physical ? '實體書' : '電子書'} · 已讀完</p>
+            <div className="ob-actions">
+              {!book.physical && (
+                <button className="primary" onClick={() => onRead(book.id)}>
+                  再看一次
+                </button>
+              )}
+              <button onClick={() => onWriteNote(book)}>寫心得</button>
+              {book.physical && <button onClick={() => onToggleFinished(book)}>改為未讀完</button>}
+            </div>
+            <button className="ghost" onClick={onClose}>
+              關閉
+            </button>
+          </div>
+          <div className="ob-cover" style={coverUrl ? undefined : { background: `hsl(${hue(book.title)} 45% 42%)` }}>
+            {coverUrl ? <img src={coverUrl} alt="" /> : <span>{book.title}</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
