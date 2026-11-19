@@ -12,8 +12,12 @@ export function percentAt(offsets, index) {
   return Math.min(100, Math.round((offsets[index + 1] / total) * 1000) / 10);
 }
 
+// 讀完的門檻：分頁時最後一頁的起始段落不一定是全書最後一段，所以 99% 以上就算讀完
+export const FINISHED_AT = 99;
+export const isFinishedPercent = (percent) => (percent || 0) >= FINISHED_AT;
+
 export function statusOf(percent) {
-  if (percent >= 100) return '已讀完';
+  if (isFinishedPercent(percent)) return '已讀完';
   if (percent > 0) return '閱讀中';
   return '未讀';
 }

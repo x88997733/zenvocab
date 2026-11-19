@@ -42,6 +42,7 @@ export async function deleteBookData(id) {
   await del(`cover:${id}`);
   await del(`chapters:${id}`);
   await del(`anno:${id}`);
+  await del(`analysis:${id}`);
 }
 
 // 目錄（章節）
@@ -51,3 +52,7 @@ export const saveChapters = (id, toc) => set(`chapters:${id}`, toc);
 // 書籤、劃線、閱讀設定（每本書）：{ bookmarks: [], highlights: [], settings: {} }
 export const loadAnno = (id) => get(`anno:${id}`).then((v) => v ?? { bookmarks: [], highlights: [], settings: null });
 export const saveAnno = (id, anno) => set(`anno:${id}`, anno);
+
+// 書籍解析（AI 產生一次後保存，可重新產生）
+export const loadAnalysis = (id) => get(`analysis:${id}`).then((v) => v ?? null);
+export const saveAnalysis = (id, data) => set(`analysis:${id}`, data);

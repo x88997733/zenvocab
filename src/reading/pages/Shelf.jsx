@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { parseBook } from '../lib/parse.js';
 import { toTraditional } from '../lib/convert.js';
 import { loadBooks, saveBooks, saveText, loadStats, saveCover, loadCover, deleteBookData, saveChapters } from '../lib/store.js';
-import { statusOf, formatDuration } from '../lib/progress.js';
+import { statusOf, formatDuration, isFinishedPercent } from '../lib/progress.js';
 import { compressImage } from '../../utils/image.js';
 import { readBookCover, readToc } from '../../services/api.js';
 import { lookupBook } from '../lib/bookinfo.js';
+import BookAnalysis from './BookAnalysis.jsx';
 
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 
@@ -22,6 +23,7 @@ export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) 
   const [selected, setSelected] = useState(() => new Set());
   const [view, setView] = useState('reading'); // 'reading' | 'finished'
   const [opened, setOpened] = useState(null); // 已讀完書櫃中打開的書
+  const [analyzing, setAnalyzing] = useState(null); // 書籍解析
 
   // 載入封面（Blob → object URL），換書或卸載時釋放
   useEffect(() => {
@@ -219,7 +221,7 @@ export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) 
   }
 
   // 讀完：電子書進度 100%，實體書可手動標記
-  const isFinished = (b) => (b.physical ? !!b.finished : (b.percent || 0) >= 100);
+  const isFinished = (b) => (b.physical ? !!b.finished : isFinishedPercent(b.percent));
   // 閱讀中依最後閱讀時間排序（最近看的在最前面）
   const sortedBooks = [...books].sort((a, b) => (b.lastRead || 0) - (a.lastRead || 0) || (b.addedAt || 0) - (a.addedAt || 0));
   const reading = sortedBooks.filter((b) => !isFinished(b));
@@ -408,14 +410,17 @@ export default function Shelf({ books, onOpen, onChanged, onWriteNote, toast }) 
             onWriteNote(b);
           }}
           onToggleFinished={toggleFinished}
+          onAnalyze={(b) => setAnalyzing(b)}
         />
       )}
+
+      {analyzing && <BookAnalysis book={analyzing} toast={toast} onClose={() => setAnalyzing(null)} />}
     </section>
   );
 }
 
 // 已讀完的書：點書脊後，封面像翻開書一樣打開，露出書頁資訊
-function OpenBook({ book, coverUrl, onClose, onRead, onWriteNote, onToggleFinished }) {
+function OpenBook({ book, coverUrl, onClose, onRead, onWriteNote, onToggleFinished, onAnalyze }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setOpen(true), 40);
@@ -436,6 +441,7 @@ function OpenBook({ book, coverUrl, onClose, onRead, onWriteNote, onToggleFinish
                 </button>
               )}
               <button onClick={() => onWriteNote(book)}>寫心得</button>
+              <button onClick={() => onAnalyze(book)}>書籍解析</button>
               {book.physical && <button onClick={() => onToggleFinished(book)}>改為未讀完</button>}
             </div>
             <button className="ghost" onClick={onClose}>

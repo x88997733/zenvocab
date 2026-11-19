@@ -168,7 +168,11 @@ export default function Reader({ book, onBack, onProgress, addEntries, toast }) 
 
   // 進度儲存
   function saveProgress(i) {
-    const percent = paragraphsRef.current ? percentAt(offsetsRef.current, i) : 0;
+    // 分頁時停在最後一頁，視為讀到最後（起始段落不一定是全書最後一段）
+    const pgs = latest.current?.pages;
+    const lastPara = pgs?.length ? pgs[pgs.length - 1][0]?.para : null;
+    const atEnd = !!paragraphsRef.current && (i >= paragraphsRef.current.length - 1 || (latest.current?.s?.pageMode === 'paged' && i === lastPara));
+    const percent = atEnd ? 100 : paragraphsRef.current ? percentAt(offsetsRef.current, i) : 0;
     loadBooks()
       .then((all) =>
         saveBooks(

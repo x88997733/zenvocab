@@ -205,3 +205,11 @@
 .rd-root .ob-cover { position: absolute; inset: 0; z-index: 2; transform-origin: left center; transition: transform 0.9s cubic-bezier(0.4, 0.1, 0.2, 1); backface-visibility: hidden; border-radius: 4px 10px 10px 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; font-weight: 600; padding: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
 .rd-root .ob-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .rd-root .ob-book.is-open .ob-cover { transform: rotateY(-165deg); }
+
+/* 書籍解析 */
+.rd-root .analysis-sheet { background: var(--card); border-radius: 16px; width: min(92vw, 560px); max-height: 82vh; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+.rd-root .analysis-head { display: flex; justify-content: space-between; align-items: center; }
+.rd-root .analysis-title { margin: 0; font-size: 17px; }
+.rd-root .analysis-body { white-space: pre-wrap; font: inherit; font-size: 15px; line-height: 1.8; margin: 0; overflow-y: auto; padding-right: 4px; }
+.rd-root .analysis-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.rd-root .analysis-foot .meta { font-size: 12px; }
